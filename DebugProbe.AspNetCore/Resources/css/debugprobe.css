@@ -98,6 +98,7 @@ a {
 }
 
 .details-item {
+    min-height: 32px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -233,6 +234,22 @@ pre {
         background: #3a3a3a;
     }
 
+
+.trace-id-button {
+    background: #f3f4f6;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-family: monospace;
+    font-weight: 600;
+}
+
+    .trace-id-button:hover {
+        background: #e5e7eb;
+    }
+
 /* =========================
    Status
 ========================= */
@@ -244,6 +261,31 @@ pre {
 .status-error {
     color: #e74c3c;
     font-weight: bold;
+}
+
+.status {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.status-200 {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-300 {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.status-400,
+.status-500 {
+    background: #fecaca;
+    color: #991b1b;
 }
 
 

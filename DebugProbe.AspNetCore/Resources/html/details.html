@@ -11,12 +11,17 @@
 
             <div class="details-item">
                 <span>Status</span>
-                <strong>{{status}}</strong>
+                <span class="status {{statusClass}}">
+                    <strong>{{status}}</strong>
+                </span>
             </div>
 
             <div class="details-item">
                 <span>TraceId</span>
-                <strong>{{tradeId}}</strong>
+                <button class="trace-id-button"
+                        onclick="navigator.clipboard.writeText('{{traceId}}')">
+                   {{traceId}}
+                </button>
             </div>
 
             <div class="details-item">

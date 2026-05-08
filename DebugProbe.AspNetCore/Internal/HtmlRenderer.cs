@@ -48,11 +48,21 @@ internal static class HtmlRenderer
             ? x.Path
             : $"{x.Path}{x.Query}";
 
+        var statusClass = x.StatusCode switch
+        {
+            >= 200 and < 300 => "status-200",
+            >= 300 and < 400 => "status-300",
+            >= 400 and < 500 => "status-400",
+            >= 500 => "status-500",
+            _ => ""
+        };
+
         var content = EmbeddedResources.Details
             .Replace("{{method}}", Encode(x.Method))
             .Replace("{{path}}", Encode(pathWithQuery))
-            .Replace("{{status}}", x.StatusCode.ToString())
-            .Replace("{{tradeId}}", x.Id.ToString())
+            .Replace("{{status}}", string.Format($"{x.StatusCode} {((HttpStatusCode)x.StatusCode)}"))
+            .Replace("{{statusClass}}", statusClass)
+            .Replace("{{traceId}}", x.Id.ToString())
 
             .Replace("{{time}}", x.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff"))
             .Replace("{{local}}", x.Timestamp.ToLocalTime().ToString("HH:mm:ss"))
@@ -69,10 +79,6 @@ internal static class HtmlRenderer
             .Replace("{{decimalSeparator}}", Encode(x.DecimalSeparator))
             .Replace("{{dateFormat}}", x.DateFormat ?? "")
             .Replace("{{assemblyVersion}}", Encode(x.AssemblyVersion))
-
-
-
-
 
             .Replace("{{requestUrl}}", Encode(string.IsNullOrEmpty(x.RequestUrl) ? "(empty)" : x.RequestUrl))
             .Replace("{{request}}", Encode(string.IsNullOrEmpty(req) ? "(empty)" : req))
