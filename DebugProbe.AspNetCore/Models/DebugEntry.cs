@@ -11,9 +11,12 @@ public class DebugEntry
     public string? RequestUrl { get; set; }
     public string RequestBody { get; set; } = default!;
     public DateTimeOffset RequestTimeUtc { get; set; }
+    public long RequestSize { get; set; }
+    public long DurationMs { get; set; }
 
     // Response
     public int StatusCode { get; set; }
+    public long ResponseSize { get; set; }
     public string ResponseBody { get; set; } = default!;
 
     // Environment

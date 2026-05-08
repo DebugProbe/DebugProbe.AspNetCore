@@ -1,10 +1,11 @@
-﻿using System.Globalization;
+﻿using System.Diagnostics;
+using System.Globalization;
 using System.Reflection;
+using System.Text;
 using DebugProbe.AspNetCore.Internal;
 using DebugProbe.AspNetCore.Models;
 using DebugProbe.AspNetCore.Storage;
 using Microsoft.AspNetCore.Http;
-using Microsoft.VisualBasic;
 
 namespace DebugProbe.AspNetCore.Middleware;
 
@@ -41,8 +42,11 @@ public class DebugProbeMiddleware
         using var ms = new MemoryStream();
         context.Response.Body = ms;
 
+        var started = Stopwatch.StartNew();
+
         await _next(context);
 
+        started.Stop();
 
         ms.Position = 0;
         var responseBody = await new StreamReader(ms).ReadToEndAsync();
@@ -72,6 +76,9 @@ public class DebugProbeMiddleware
             Query = context.Request.QueryString.ToString(),
             StatusCode = context.Response.StatusCode,
             RequestTimeUtc = DateTime.UtcNow,
+            DurationMs = started.ElapsedMilliseconds,
+            RequestSize = Encoding.UTF8.GetByteCount(requestBody),
+            ResponseSize = Encoding.UTF8.GetByteCount(responseBody),
 
             // Request
             RequestUrl = $"{context.Request.Scheme}://{context.Request.Host}" + 

@@ -57,6 +57,10 @@ internal static class HtmlRenderer
             .Replace("{{time}}", x.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff"))
             .Replace("{{local}}", x.Timestamp.ToLocalTime().ToString("HH:mm:ss"))
 
+            .Replace("{{durationMs}}", x.DurationMs.ToString())
+            .Replace("{{requestSize}}", x.RequestSize.ToString())
+            .Replace("{{responseSize}}", x.ResponseSize.ToString())
+
             .Replace("{{env}}", Encode(x.Environment))
             .Replace("{{culture}}", Encode(x.Culture))
 
@@ -65,6 +69,10 @@ internal static class HtmlRenderer
             .Replace("{{decimalSeparator}}", Encode(x.DecimalSeparator))
             .Replace("{{dateFormat}}", x.DateFormat ?? "")
             .Replace("{{assemblyVersion}}", Encode(x.AssemblyVersion))
+
+
+
+
 
             .Replace("{{requestUrl}}", Encode(string.IsNullOrEmpty(x.RequestUrl) ? "(empty)" : x.RequestUrl))
             .Replace("{{request}}", Encode(string.IsNullOrEmpty(req) ? "(empty)" : req))
