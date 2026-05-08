@@ -1,4 +1,4 @@
-window.runCompare = async function () {
+﻿window.runCompare = async function () {
     const id = window.location.pathname.split('/').pop();
     const base = document.getElementById('baseUrl').value.trim();
     const remoteId = document.getElementById('compareId').value.trim();
@@ -32,24 +32,33 @@ function setCompareResult(html) {
 
 function renderCompare(result) {
     return [
-        renderSection('Environment', [
-            { field: 'Environment', local: result.environment?.local, remote: result.environment?.remote },
-            { field: 'Culture', local: result.culture?.local, remote: result.culture?.remote }
-        ]),
-        renderSection('Overview', [
-            { field: 'Method', local: result.method?.local, remote: result.method?.remote },
-            { field: 'Path', local: result.path?.local, remote: result.path?.remote },
-            { field: 'Status', local: result.status?.local, remote: result.status?.remote },
-            { field: 'Request Time', local: result.requestTime?.local, remote: result.requestTime?.remote }
-        ]),
-        '<h3>Request</h3>',
-        renderSideBySideJson(result.requestBody),
-        '<h3>Response</h3>',
-        renderSideBySideJson(result.responseBody)
+        renderAccordionSection(
+            'Environment',
+            renderSectionRows([
+                { field: 'Environment', local: result.environment?.local, remote: result.environment?.remote },
+                { field: 'Culture', local: result.culture?.local, remote: result.culture?.remote }
+            ])
+        ),
+
+        renderAccordionSection(
+            'Overview',
+            renderSectionRows([
+                { field: 'Method', local: result.method?.local, remote: result.method?.remote },
+                { field: 'Path', local: result.path?.local, remote: result.path?.remote },
+                { field: 'Status', local: result.status?.local, remote: result.status?.remote },
+                { field: 'Request Time', local: result.requestTime?.local, remote: result.requestTime?.remote }
+            ]),
+            true // expanded by default
+        ),
+
+        renderAccordionSection('Request', renderSideBySideJson(result.requestBody)),
+
+        renderAccordionSection('Response', renderSideBySideJson(result.responseBody)
+        )
     ].join('');
 }
 
-function renderSection(title, rows) {
+function renderSectionRows(rows) {
     const body = rows.map(row => {
         const changed = row.local !== row.remote;
         const rowStyle = changed ? ' style="background:rgba(255,200,0,0.12)"' : '';
@@ -62,13 +71,17 @@ function renderSection(title, rows) {
         </tr>`;
     }).join('');
 
-    return `<h3>${escapeHtml(title)}</h3>
-        <table style="border-collapse:collapse;width:100%">
-            <tr><th>Field</th><th>Local</th><th>Remote</th></tr>
+    return `
+        <table>
+            <tr>
+                <th>Field</th>
+                <th>Local</th>
+                <th>Remote</th>
+            </tr>
             ${body}
-        </table>`;
+        </table>
+    `;
 }
-
 function renderSideBySideJson(data) {
     const localJson = data?.local || '';
     const remoteJson = data?.remote || '';
@@ -84,6 +97,34 @@ function renderSideBySideJson(data) {
             ${renderAlignedJson(comparison.remote, remoteJson)}
         </div>
     </div>`;
+}
+
+function renderAccordionSection(title, content, expanded = false) {
+    return `
+        <div class="accordion-section">
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                <div class="accordion-title">${escapeHtml(title)}</div>
+
+                <div class="accordion-meta">
+                    ${expanded ? '-' : '+'}
+                </div>
+            </div>
+
+            <div class="accordion-body ${expanded ? 'open' : ''}">
+                ${content}
+            </div>
+        </div>
+    `;
+}
+
+function toggleAccordion(header) {
+    const body = header.nextElementSibling;
+    const meta = header.querySelector('.accordion-meta');
+
+    body.classList.toggle('open');
+
+    meta.textContent =
+        body.classList.contains('open') ? '-' : '+';
 }
 
 function compareJsonBodies(localJson, remoteJson) {
@@ -452,3 +493,4 @@ function escapeHtml(value) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
+
