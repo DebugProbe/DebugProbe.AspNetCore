@@ -4,12 +4,71 @@
 
     <h2>{{method}} {{path}}</h2>
 
-    <p><b>Status:</b> {{status}}</p>
-    <p><b>TraceId:</b> {{tradeId}}</p>
-    <p><b>Time:</b> {{time}}</p>
-    <p><b>Local:</b> {{local}}</p>
-    <p><b>Env:</b> {{env}}</p>
-    <p><b>Culture:</b> {{culture}}</p>
+    <div class="details-grid">
+
+        <div class="details-card">
+            <div class="details-card-title">Overview</div>
+
+            <div class="details-item">
+                <span>Status</span>
+                <strong>{{status}}</strong>
+            </div>
+
+            <div class="details-item">
+                <span>TraceId</span>
+                <strong>{{tradeId}}</strong>
+            </div>
+
+            <div class="details-item">
+                <span>Time</span>
+                <strong>{{time}}</strong>
+            </div>
+
+            <div class="details-item">
+                <span>Local</span>
+                <strong>{{local}}</strong>
+            </div>
+        </div>
+
+        <div class="details-card">
+            <div class="details-card-title">Environment</div>
+
+            <div class="details-item">
+                <span>Environment</span>
+                <strong>{{env}}</strong>
+            </div>
+
+            <div class="details-item">
+                <span>Culture</span>
+                <strong>{{culture}}</strong>
+            </div>
+
+            <div class="details-item">
+                <span>Machine</span>
+                <strong>{{machineName}}</strong>
+            </div>
+
+            <div class="details-item">
+                <span>TimeZone</span>
+                <strong>{{timeZone}}</strong>
+            </div>
+
+            <div class="details-item">
+                <span>Decimal</span>
+                <strong>{{decimalSeparator}}</strong>
+            </div>
+
+            <div class="details-item">
+                <span>Date Format</span>
+                <strong>{{dateFormat}}</strong>
+            </div>
+
+            <div class="details-item">
+                <span>Version</span>
+                <strong>{{assemblyVersion}}</strong>
+            </div>
+        </div>
+    </div>
 
     <h3>Request URL</h3>
     <div class="code-block">

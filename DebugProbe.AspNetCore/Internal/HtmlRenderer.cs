@@ -53,10 +53,19 @@ internal static class HtmlRenderer
             .Replace("{{path}}", Encode(pathWithQuery))
             .Replace("{{status}}", x.StatusCode.ToString())
             .Replace("{{tradeId}}", x.Id.ToString())
+
             .Replace("{{time}}", x.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff"))
             .Replace("{{local}}", x.Timestamp.ToLocalTime().ToString("HH:mm:ss"))
+
             .Replace("{{env}}", Encode(x.Environment))
             .Replace("{{culture}}", Encode(x.Culture))
+
+            .Replace("{{machineName}}", Encode(x.MachineName))
+            .Replace("{{timeZone}}", Encode(x.TimeZone))
+            .Replace("{{decimalSeparator}}", Encode(x.DecimalSeparator))
+            .Replace("{{dateFormat}}", x.DateFormat ?? "")
+            .Replace("{{assemblyVersion}}", Encode(x.AssemblyVersion))
+
             .Replace("{{requestUrl}}", Encode(string.IsNullOrEmpty(x.RequestUrl) ? "(empty)" : x.RequestUrl))
             .Replace("{{request}}", Encode(string.IsNullOrEmpty(req) ? "(empty)" : req))
             .Replace("{{response}}", Encode(string.IsNullOrEmpty(res) ? "(empty)" : res))
