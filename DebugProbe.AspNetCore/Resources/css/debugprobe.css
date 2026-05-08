@@ -233,6 +233,22 @@ pre {
         background: #3a3a3a;
     }
 
+
+.trace-id-button {
+    background: #f3f4f6;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-family: monospace;
+    font-weight: 600;
+}
+
+    .trace-id-button:hover {
+        background: #e5e7eb;
+    }
+
 /* =========================
    Status
 ========================= */

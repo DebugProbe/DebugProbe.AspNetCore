@@ -18,7 +18,10 @@
 
             <div class="details-item">
                 <span>TraceId</span>
-                <strong>{{tradeId}}</strong>
+                <button class="trace-id-button"
+                        onclick="navigator.clipboard.writeText('{{traceId}}')">
+                   {{traceId}}
+                </button>
             </div>
 
             <div class="details-item">
