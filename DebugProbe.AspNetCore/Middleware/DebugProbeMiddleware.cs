@@ -44,60 +44,67 @@ public class DebugProbeMiddleware
 
         var started = Stopwatch.StartNew();
 
-        await _next(context);
-
-        started.Stop();
-
-        ms.Position = 0;
-        var responseBody = await new StreamReader(ms).ReadToEndAsync();
-        ms.Position = 0;
-        await ms.CopyToAsync(originalBody);
-
-        var shortDatePattern = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern;
-        var index = shortDatePattern.LastIndexOf('y');
-        var dataFormat = index >= 0 ? shortDatePattern[..(index + 1)] : shortDatePattern;
-
-        store.Add(new DebugEntry
+        try
         {
-            Id = Guid.NewGuid().ToString(),
+            await _next(context);
+        }
+        finally
+        {
+            started.Stop();
 
-            // Environment
-            Environment = EnvironmentUtils.TryGetEnvironment(),
-            MachineName = Environment.MachineName,
-            AssemblyVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(),
-            TimeZone = TimeZoneInfo.Local.DisplayName,
-            Culture = CultureInfo.CurrentCulture.Name,
-            DecimalSeparator = CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator,
-            DateFormat = dataFormat,
+            ms.Position = 0;
+            var responseBody = await new StreamReader(ms).ReadToEndAsync();
+            ms.Position = 0;
+            await ms.CopyToAsync(originalBody);
 
-            // Overview
-            Method = context.Request.Method,
-            Path = context.Request.Path,
-            Query = context.Request.QueryString.ToString(),
-            StatusCode = context.Response.StatusCode,
-            RequestTimeUtc = DateTime.UtcNow,
-            DurationMs = started.ElapsedMilliseconds,
-            RequestSize = Encoding.UTF8.GetByteCount(requestBody),
-            ResponseSize = Encoding.UTF8.GetByteCount(responseBody),
+            context.Response.Body = originalBody;
 
-            // Request
-            RequestUrl = $"{context.Request.Scheme}://{context.Request.Host}" + 
-                    $"{context.Request.Path}{context.Request.QueryString}",
-            RequestBody = Trim(requestBody),
+            var shortDatePattern = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern;
+            var index = shortDatePattern.LastIndexOf('y');
+            var dataFormat = index >= 0 ? shortDatePattern[..(index + 1)] : shortDatePattern;
+
+            store.Add(new DebugEntry
+            {
+                Id = Guid.NewGuid().ToString(),
+
+                // Environment
+                Environment = EnvironmentUtils.TryGetEnvironment(),
+                MachineName = Environment.MachineName,
+                AssemblyVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(),
+                TimeZone = TimeZoneInfo.Local.DisplayName,
+                Culture = CultureInfo.CurrentCulture.Name,
+                DecimalSeparator = CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator,
+                DateFormat = dataFormat,
+
+                // Overview
+                Method = context.Request.Method,
+                Path = context.Request.Path,
+                Query = context.Request.QueryString.ToString(),
+                StatusCode = context.Response.StatusCode,
+                RequestTimeUtc = DateTime.UtcNow,
+                DurationMs = started.ElapsedMilliseconds,
+                RequestSize = Encoding.UTF8.GetByteCount(requestBody),
+                ResponseSize = Encoding.UTF8.GetByteCount(responseBody),
+
+                // Request
+                RequestUrl = $"{context.Request.Scheme}://{context.Request.Host}" + 
+                        $"{context.Request.Path}{context.Request.QueryString}",
+                RequestBody = Trim(requestBody),
 
 
-            // Response
-            ResponseBody = Trim(responseBody),
+                // Response
+                ResponseBody = Trim(responseBody),
 
 
-            // Headers
-            Headers = context.Request.Headers.ToDictionary(x => x.Key, x => x.Value.ToString()),
+                // Headers
+                Headers = context.Request.Headers.ToDictionary(x => x.Key, x => x.Value.ToString()),
 
 
-            // Other
-            Timestamp = DateTime.UtcNow,
-         
-        });
+                // Other
+                Timestamp = DateTime.UtcNow,
+             
+            });
+        }
     }
 
     private string Trim(string value, int max = 2000)
