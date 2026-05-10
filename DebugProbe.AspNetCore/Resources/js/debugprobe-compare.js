@@ -158,28 +158,64 @@ function getChangedCount(rows) {
     return rows.filter(x => x.local !== x.remote).length;
 }
 
+
 function compareJsonBodies(localJson, remoteJson) {
     const local = parseJson(localJson);
     const remote = parseJson(remoteJson);
 
-    if (!local.ok || !remote.ok) {
+    const localEmpty = !local.raw || local.raw.trim() === '';
+    const remoteEmpty = !remote.raw || remote.raw.trim() === '';
+
+    if (localEmpty && remoteEmpty) {
         return {
-            local: (local.raw || '(empty)')
+            local: [{ text: '(empty)', state: '' }],
+            remote: [{ text: '(empty)', state: '' }],
+            changes: 0
+        };
+    }
+
+    if (
+        (!local.ok && !localEmpty) ||
+        (!remote.ok && !remoteEmpty)
+    ) {
+        return {
+            local: (localEmpty ? '(empty)' : local.raw)
                 .split('\n')
                 .map(x => ({
                     text: x,
-                    state: !local.ok ? 'invalid' : ''
+                    state: !local.ok && !localEmpty ? 'invalid' : ''
                 })),
 
-            remote: (remote.raw || '(empty)')
+            remote: (remoteEmpty ? '(empty)' : remote.raw)
                 .split('\n')
                 .map(x => ({
                     text: x,
-                    state: !remote.ok ? 'invalid' : ''
+                    state: !remote.ok && !remoteEmpty ? 'invalid' : ''
                 })),
 
-            localError: !local.ok ? 'Failed To Parse JSON' : null,
-            remoteError: !remote.ok ? 'Failed To Parse JSON' : null,
+            localError: !local.ok && !localEmpty
+                ? 'Failed To Parse JSON'
+                : null,
+
+            remoteError: !remote.ok && !remoteEmpty
+                ? 'Failed To Parse JSON'
+                : null,
+
+            changes: 1
+        };
+    }
+
+    if (localEmpty || remoteEmpty) {
+        return {
+            local: localEmpty
+                ? [{ text: '(empty)', state: '' }]
+                : stringifyLines(local.value, 0, false)
+                    .map(x => ({ text: x, state: 'added' })),
+
+            remote: remoteEmpty
+                ? [{ text: '(empty)', state: '' }]
+                : stringifyLines(remote.value, 0, false)
+                    .map(x => ({ text: x, state: 'added' })),
 
             changes: 1
         };
