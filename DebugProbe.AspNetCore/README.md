@@ -1,12 +1,10 @@
 ﻿# DebugProbe.AspNetCore 
 
+<img src="https://raw.githubusercontent.com/georgidhristov/DebugProbe.AspNetCore/refs/heads/master/Assets/logo.png" width="120" />
 
+**Debug HTTP traffic directly from inside your ASP.NET Core pipeline.**
 
-**Inspect and compare HTTP traffic directly inside your ASP.NET Core app.**
-
-No proxies. No external tools. Just plug in and debug.
-
-
+Live Demo: https://debugprobe.dev
 
 ## Why DebugProbe?
 
@@ -16,16 +14,15 @@ No proxies. No external tools. Just plug in and debug.
 - Compare environments in seconds
 
 
-
 ## Features
 
-- Capture HTTP requests & responses
-- Inspect headers, query, and body
+- Capture HTTP requests and responses
+- Inspect headers, query params, and body
+- Built-in request tracing UI
+- Compare responses across environments
 - JSON pretty formatting
-- Side-by-side response comparison
-- Built-in UI (`/debug`)
-- Zero configuration
-
+- Ignore noisy endpoints with `IgnorePaths`
+- Zero external proxies or setup
 
 
 ## Screenshots
@@ -34,10 +31,10 @@ No proxies. No external tools. Just plug in and debug.
 ![Requests](https://raw.githubusercontent.com/georgidhristov/DebugProbe.AspNetCore/master/Assets/requests.png)
 
 ### Details
-![Details](https://raw.githubusercontent.com/georgidhristov/DebugProbe.AspNetCore/master/Assets/details.png)
+![Details](https://raw.githubusercontent.com/georgidhristov/DebugProbe.AspNetCore/refs/heads/master/Assets/details_v1.3.0.png)
 
 ### Compare
-![Compare](https://raw.githubusercontent.com/georgidhristov/DebugProbe.AspNetCore/master/Assets/compare.png)
+![Compare](https://raw.githubusercontent.com/georgidhristov/DebugProbe.AspNetCore/refs/heads/master/Assets/compare_v1.3.0.png)
 
 ---
 
@@ -48,14 +45,32 @@ dotnet add package DebugProbe.AspNetCore
 ```
 
 ## Quick Start
-```bash
+
+```csharp
 builder.Services.AddDebugProbe();
 
-//Add middleware 
 app.UseDebugProbe();
 ```
 
-## Open Debug UI
+## Customize DebugProbe
+
+```csharp
+builder.Services.AddDebugProbe(options =>
+{
+    options.MaxEntries = 10;
+
+    options.IgnorePaths =
+    [
+        "/health",
+        "/swagger",
+        "/Demo/GetUsers"
+    ];
+});
+
+app.UseDebugProbe();
+```
+
+## Open The Debug UI
 Run your application, then open:
 
 http://localhost:{port}/debug
