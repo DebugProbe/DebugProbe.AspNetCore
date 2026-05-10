@@ -4,9 +4,10 @@ using System.Reflection;
 using System.Text;
 using DebugProbe.AspNetCore.Internal;
 using DebugProbe.AspNetCore.Models;
+using DebugProbe.AspNetCore.Options;
 using DebugProbe.AspNetCore.Storage;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.Extensions.Options;
 
 namespace DebugProbe.AspNetCore.Middleware;
 
@@ -17,10 +18,12 @@ namespace DebugProbe.AspNetCore.Middleware;
 public class DebugProbeMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly DebugProbeOptions _options;
 
-    public DebugProbeMiddleware(RequestDelegate next)
+    public DebugProbeMiddleware(RequestDelegate next, DebugProbeOptions options)
     {
         _next = next;
+        _options = options;
     }
 
     public async Task Invoke(HttpContext context, DebugEntryStore store)
@@ -36,8 +39,10 @@ public class DebugProbeMiddleware
         var path = context.Request.Path.Value ?? string.Empty;
 
         var ignored =
-            path.StartsWith("/debug") ||
-            path.StartsWith("/swagger");
+        path.StartsWith("/debug") ||
+        path.StartsWith("/swagger") ||
+        _options.IgnorePaths.Any(x =>
+            path.StartsWith(x, StringComparison.OrdinalIgnoreCase));
 
         if (ignored)
         {
