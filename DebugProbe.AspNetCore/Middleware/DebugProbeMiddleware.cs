@@ -6,6 +6,7 @@ using DebugProbe.AspNetCore.Internal;
 using DebugProbe.AspNetCore.Models;
 using DebugProbe.AspNetCore.Storage;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Controllers;
 
 namespace DebugProbe.AspNetCore.Middleware;
 
@@ -24,10 +25,12 @@ public class DebugProbeMiddleware
 
     public async Task Invoke(HttpContext context, DebugEntryStore store)
     {
-        /// Skips DebugProbe endpoints to avoid self-tracking.
-        if (context.Request.Path.StartsWithSegments("/debug") ||
-            context.Request.Path.StartsWithSegments("/debugprobe") ||
-            context.Request.Path.StartsWithSegments("/favicon.ico"))
+        var endpoint = context.GetEndpoint();
+
+        var isApiEndpoint =
+            endpoint?.Metadata.GetMetadata<ControllerActionDescriptor>() is not null;
+
+        if (!isApiEndpoint)
         {
             await _next(context);
             return;
