@@ -27,10 +27,19 @@ public class DebugProbeMiddleware
     {
         var endpoint = context.GetEndpoint();
 
-        var isApiEndpoint =
-            endpoint?.Metadata.GetMetadata<ControllerActionDescriptor>() is not null;
+        if (endpoint is null)
+        {
+            await _next(context);
+            return;
+        }
 
-        if (!isApiEndpoint)
+        var path = context.Request.Path.Value ?? string.Empty;
+
+        var ignored =
+            path.StartsWith("/debug") ||
+            path.StartsWith("/swagger");
+
+        if (ignored)
         {
             await _next(context);
             return;
