@@ -1,0 +1,26 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore DebugProbe.AspNetCore/DebugProbe.AspNetCore.csproj
+
+      - name: Build
+        run: dotnet build DebugProbe.AspNetCore/DebugProbe.AspNetCore.csproj --no-restore --configuration Release
