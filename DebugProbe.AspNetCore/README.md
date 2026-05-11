@@ -1,7 +1,5 @@
 ﻿# DebugProbe.AspNetCore 
 
-<img src="https://raw.githubusercontent.com/georgidhristov/DebugProbe.AspNetCore/refs/heads/main/Assets/logo.png" width="120" />
-
 **Debug HTTP traffic directly from inside your ASP.NET Core pipeline.**
 
 Live Demo: https://debugprobe.dev
