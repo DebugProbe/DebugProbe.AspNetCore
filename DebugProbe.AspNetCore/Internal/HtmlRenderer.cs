@@ -48,20 +48,14 @@ internal static class HtmlRenderer
             ? x.Path
             : $"{x.Path}{x.Query}";
 
-        var statusClass = x.StatusCode switch
-        {
-            >= 200 and < 300 => "status-200",
-            >= 300 and < 400 => "status-300",
-            >= 400 and < 500 => "status-400",
-            >= 500 => "status-500",
-            _ => ""
-        };
+        var statusClass = GetStatusClass(x.StatusCode);
 
         var content = EmbeddedResources.Details
             .Replace("{{method}}", Encode(x.Method))
             .Replace("{{path}}", Encode(pathWithQuery))
-            .Replace("{{status}}", string.Format($"{x.StatusCode} {((HttpStatusCode)x.StatusCode)}"))
+            .Replace("{{status}}", GetStatusText(x.StatusCode))
             .Replace("{{statusClass}}", statusClass)
+            .Replace("{{responseStatusCode}}", x.StatusCode.ToString())
             .Replace("{{traceId}}", x.Id.ToString())
 
             .Replace("{{time}}", x.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff"))
@@ -99,6 +93,23 @@ internal static class HtmlRenderer
         return WebUtility.HtmlEncode(value ?? "");
     }
 
+    private static string GetStatusText(int statusCode)
+    {
+        return $"{statusCode} {((HttpStatusCode)statusCode)}";
+    }
+
+    private static string GetStatusClass(int statusCode)
+    {
+        return statusCode switch
+        {
+            >= 200 and < 300 => "status-200",
+            >= 300 and < 400 => "status-300",
+            >= 400 and < 500 => "status-400",
+            >= 500 => "status-500",
+            _ => ""
+        };
+    }
+
     private static string GetPayloadType(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -106,7 +117,12 @@ internal static class HtmlRenderer
             return "Empty";
         }
 
-        return JsonUtils.IsValidJson(value) ? "JSON" : "Plain Text";
+        if (JsonUtils.IsValidJson(value))
+        {
+            return "JSON";
+        }
+
+        return LooksLikeJson(value) ? "Invalid JSON" : "Plain Text";
     }
 
     private static string GetPayloadTypeClass(string value)
@@ -116,6 +132,19 @@ internal static class HtmlRenderer
             return "payload-empty";
         }
 
-        return JsonUtils.IsValidJson(value) ? "payload-json" : "payload-text";
+        if (JsonUtils.IsValidJson(value))
+        {
+            return "payload-json";
+        }
+
+        return LooksLikeJson(value) ? "payload-invalid-json" : "payload-text";
     }
+
+    private static bool LooksLikeJson(string value)
+    {
+        var trimmed = value.TrimStart();
+
+        return trimmed.StartsWith('{') || trimmed.StartsWith('[');
+    }
+
 }

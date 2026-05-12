@@ -1,18 +1,11 @@
 ﻿/* =========================
    Base
 ========================= */
+
 body {
     margin: 0;
-    font-family: Arial, sans-serif;
     background: #f7f7f7;
-}
-
-h2 {
-    margin-bottom: 10px;
-}
-
-h3 {
-    margin-top: 25px;
+    font-family: Arial, sans-serif;
 }
 
 a {
@@ -26,29 +19,46 @@ a {
         text-decoration: underline;
     }
 
+h2 {
+    margin-bottom: 10px;
+}
+
+h3 {
+    margin-top: 25px;
+    margin-bottom: 10px;
+}
+
 /* =========================
    Layout
 ========================= */
+
 .container {
     padding: 20px;
 }
 
-.toolbar {
+.toolbar,
+.topbar,
+.accordion-header,
+.accordion-meta,
+.details-item,
+.json-compare {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+}
+
+.toolbar,
+.topbar,
+.accordion-header,
+.details-item {
+    justify-content: space-between;
 }
 
 .topbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     padding: 18px;
-    font-family: 'Roboto', sans-serif;
-    font-size: 20px;
     background: #1b1b1b;
     color: #fff;
+    font-family: 'Roboto', sans-serif;
+    font-size: 20px;
 }
 
 .logo {
@@ -58,15 +68,15 @@ a {
 }
 
     .logo img {
-        height: 24px;
         width: auto;
+        height: 24px;
     }
 
 .env {
-    font-size: 13px;
     padding: 4px 10px;
-    border-radius: 4px;
     background: #2d2d2d;
+    border-radius: 4px;
+    font-size: 13px;
     opacity: 0.9;
 }
 
@@ -75,33 +85,30 @@ a {
 ========================= */
 
 .details-grid {
-    align-items: start;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    align-items: start;
     gap: 16px;
     margin-bottom: 24px;
 }
 
 .details-card {
+    overflow: hidden;
     background: #fff;
     border: 1px solid #e9e9e9;
     border-radius: 8px;
-    overflow: hidden;
 }
 
 .details-card-title {
     padding: 14px 16px;
+    background: #fafafa;
+    border-bottom: 1px solid #eee;
     font-size: 16px;
     font-weight: 600;
-    border-bottom: 1px solid #eee;
-    background: #fafafa;
 }
 
 .details-item {
     min-height: 32px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     padding: 10px 16px;
     border-bottom: 1px solid #f3f3f3;
 }
@@ -115,17 +122,18 @@ a {
     }
 
     .details-item strong {
-        font-weight: 600;
         font-size: 15px;
+        font-weight: 600;
     }
 
 /* =========================
    Table
 ========================= */
+
 table {
     width: 100%;
-    border-collapse: collapse;
     background: #fff;
+    border-collapse: collapse;
 }
 
 th,
@@ -144,17 +152,24 @@ tr:hover {
 }
 
 /* =========================
-   Code / JSON
+   Section Titles
 ========================= */
-pre {
-    background: #1e1e1e;
-    color: #dcdcdc;
-    padding: 12px;
-    border-radius: 6px;
-    overflow: auto;
-    font-size: 13px;
-    line-height: 1.4;
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 25px;
+    margin-bottom: 10px;
 }
+
+.section-title h3 {
+    margin: 0;
+}
+
+/* =========================
+   Code Blocks
+========================= */
 
 .code-block {
     position: relative;
@@ -165,47 +180,76 @@ pre {
         margin: 0;
     }
 
+pre {
+    overflow: auto;
+    margin: 0;
+    padding: 12px;
+    background: #1e1e1e;
+    border-radius: 6px;
+    color: #dcdcdc;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+/* =========================
+   JSON Compare
+========================= */
+
 .json-compare {
-    display: flex;
-    gap: 20px;
     align-items: flex-start;
+    gap: 20px;
 }
 
     .json-compare > div {
-        flex: 1;
         min-width: 0;
+        flex: 1;
         padding: 10px;
         border-bottom: 1px solid #eee;
         text-align: left;
     }
 
 .json-error {
-    font-size: 12px;
-    padding: 4px 8px;
     margin-bottom: 4px;
-    border-radius: 6px;
+    padding: 4px 8px;
     background: rgba(231, 76, 60, 0.12);
-    color: #ff8a8a;
     border: 1px solid rgba(231, 76, 60, 0.25);
+    border-radius: 6px;
+    color: #ff8a8a;
+    font-size: 12px;
 }
 
-.code-block-header {
-    display: flex;
-    justify-content: space-between;
+/* =========================
+   Badges
+========================= */
+
+.code-badge {
+    position: relative;
+    top: -1px;
+}
+
+.code-badge,
+.status,
+.diff-badge {
+    display: inline-flex;
     align-items: center;
-    margin-bottom: 8px;
+    justify-content: center;
+    border-radius: 999px;
+    font-weight: 600;
 }
 
 .code-badge {
-    font-size: 12px;
-    font-weight: 600;
     padding: 4px 8px;
-    border-radius: 999px;
+    font-size: 12px;
 }
 
 .payload-json {
     background: #183d24;
     color: #6ddf8b;
+}
+
+.payload-invalid-json {
+    background: #4a1717;
+    color: #ff8a8a;
 }
 
 .payload-text {
@@ -223,9 +267,19 @@ pre {
     color: #ddd;
 }
 
+.diff-badge {
+    min-width: 22px;
+    height: 22px;
+    background: #e74c3c;
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+}
+
 /* =========================
    Diff
 ========================= */
+
 .diff-line {
     min-height: 18px;
     padding-left: 6px;
@@ -253,40 +307,30 @@ pre {
     border-left: 3px solid #e74c3c;
 }
 
-.diff-badge {
-    min-width: 22px;
-    height: 22px;
-    border-radius: 999px;
-    background: #e74c3c;
-    color: #fff;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: bold;
-}
-
 /* =========================
    Buttons
 ========================= */
+
 .copy-btn,
-.btn-clear {
-    font-size: 11px;
-    background: #2d2d2d;
-    color: #ccc;
-    border: 1px solid #444;
+.btn-clear,
+.trace-id-button {
     border-radius: 4px;
     cursor: pointer;
 }
 
-.copy-btn {
-    padding: 4px 8px;
+.copy-btn,
+.btn-clear {
+    background: #2d2d2d;
+    border: 1px solid #444;
+    color: #ccc;
 }
 
-.btn-clear {
-    padding: 6px 12px;
-    font-size: 13px;
-    color: #fff;
+.copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px 8px;
+    font-size: 11px;
 }
 
     .copy-btn:hover,
@@ -294,15 +338,18 @@ pre {
         background: #3a3a3a;
     }
 
+.btn-clear {
+    padding: 6px 12px;
+    color: #fff;
+    font-size: 13px;
+}
 
 .trace-id-button {
+    padding: 6px 10px;
     background: #f3f4f6;
     border: none;
-    border-radius: 6px;
-    font-size: 13px;
-    padding: 6px 10px;
-    cursor: pointer;
     font-family: monospace;
+    font-size: 13px;
     font-weight: 600;
 }
 
@@ -313,60 +360,53 @@ pre {
 /* =========================
    Status
 ========================= */
+
+.status {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
 .status-ok {
-    color: #2ecc71;
+    color: #2ecc71 !important;
     font-weight: bold;
 }
 
 .status-error {
-    color: #e74c3c;
+    color: #e74c3c !important;
     font-weight: bold;
 }
 
-.status {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 600;
-}
-
 .status-200 {
-    background: #dcfce7;
-    color: #166534;
+    background: #183d24;
+    color: #6ddf8b !important;
 }
 
 .status-300 {
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: #1d3557;
+    color: #7cc7ff !important;
 }
 
 .status-400,
 .status-500 {
-    background: #fecaca;
-    color: #991b1b;
+    background: #4a1717;
+    color: #ff8a8a !important;
 }
-
 
 /* =========================
    Accordion
 ========================= */
 
 .accordion-section {
-    background: #fff;
-    border-radius: 8px;
-    margin-bottom: 14px;
     overflow: hidden;
+    margin-bottom: 14px;
+    background: #fff;
     border: 1px solid #e9e9e9;
+    border-radius: 8px;
 }
 
 .accordion-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
     padding: 18px;
+    cursor: pointer;
 }
 
     .accordion-header:hover {
@@ -379,8 +419,6 @@ pre {
 }
 
 .accordion-meta {
-    display: flex;
-    align-items: center;
     gap: 10px;
 }
 

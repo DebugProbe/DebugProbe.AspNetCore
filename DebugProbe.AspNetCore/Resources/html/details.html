@@ -11,8 +11,8 @@
 
             <div class="details-item">
                 <span>Status</span>
-                <span class="status {{statusClass}}">
-                    <strong>{{status}}</strong>
+                <span class="code-badge status {{statusClass}}">
+                    {{status}}
                 </span>
             </div>
 
@@ -90,48 +90,51 @@
         </div>
     </div>
 
-    <h3>Request URL</h3>
-    <div class="code-block">
-        <div class="code-block-header">
+    <div class="section-title">
+        <h3>Request URL</h3>
+
+        <div class="code-badges">
             <span class="code-badge payload-url">
                 URL
             </span>
-
-            <button class="copy-btn" onclick="copyText(this)">
-                Copy
-            </button>
         </div>
-
+    </div>
+    <div class="code-block">
+        <button class="copy-btn" onclick="copyText(this)">Copy</button>
         <pre>{{requestUrl}}</pre>
     </div>
 
-    <h3>Request Body</h3>
-    <div class="code-block">
-        <div class="code-block-header">
+
+    <div class="section-title">
+        <h3>Request Body</h3>
+
+        <div class="code-badges">
             <span class="code-badge {{requestTypeClass}}">
                 {{requestType}}
             </span>
-
-            <button class="copy-btn" onclick="copyText(this)">
-                Copy
-            </button>
         </div>
-
+    </div>
+    <div class="code-block">
+        <button class="copy-btn" onclick="copyText(this)">Copy</button>
         <pre>{{request}}</pre>
     </div>
 
-    <h3>Response Body</h3>
-    <div class="code-block">
-        <div class="code-block-header">
+
+    <div class="section-title">
+        <h3>Response Body</h3>
+
+        <div class="code-badges">
             <span class="code-badge {{responseTypeClass}}">
                 {{responseType}}
             </span>
 
-            <button class="copy-btn" onclick="copyText(this)">
-                Copy
-            </button>
+            <span class="code-badge status {{statusClass}}">
+                {{responseStatusCode}}
+            </span>
         </div>
-
+    </div>
+    <div class="code-block">
+        <button class="copy-btn" onclick="copyText(this)">Copy</button>
         <pre>{{response}}</pre>
     </div>
 
