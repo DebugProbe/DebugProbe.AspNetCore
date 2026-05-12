@@ -33,9 +33,7 @@
 
         setCompareResult(renderCompare(result));
 
-    } catch (error) {
-
-        console.error(error);
+    } catch {
 
         setCompareResult(
             `<b style="color:red">${error}</b>`
