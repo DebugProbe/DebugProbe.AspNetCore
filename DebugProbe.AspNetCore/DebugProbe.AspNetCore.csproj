@@ -7,11 +7,11 @@
 
 		<PackageIcon>icon.png</PackageIcon>
 		<PackageId>DebugProbe.AspNetCore</PackageId>
-		<Version>1.3.1</Version>
+		<Version>1.4.0-preview.1</Version>
 
 		<Authors>Georgi Hristov</Authors>
 		<Description>Debug and inspect HTTP requests and responses inside ASP.NET Core apps. Capture, analyze, and compare API calls with a built-in UI.</Description>
-		<PackageTags>aspnetcore;debugging;http;middleware;api;diagnostics;</PackageTags>
+		<PackageTags>aspnetcore;debugging;http;middleware;api;diagnostics</PackageTags>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 
 		<RepositoryUrl>https://github.com/georgidhristov/DebugProbe.AspNetCore</RepositoryUrl>
@@ -36,9 +36,7 @@
 	<ItemGroup>
 		<EmbeddedResource Include="Resources\**\*.html" />
 		<EmbeddedResource Include="Resources\**\*.css" />
-		<EmbeddedResource Include="Resources\js\debugprobe_compare_engine.js" />
-		<EmbeddedResource Include="Resources\js\debugprobe_compare_renderer.js" />
-		<EmbeddedResource Include="Resources\js\debugprobe_ui.js" />
+		<EmbeddedResource Include="Resources\js\*.js" />
 		<EmbeddedResource Include="Assets\logo-full.PNG" />
 		<EmbeddedResource Include="Assets\favicon.ico" />
 	</ItemGroup>
@@ -46,11 +44,7 @@
 	<ItemGroup>
 		<None Remove="Resources\**\*.html" />
 		<None Remove="Resources\**\*.css" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <None Remove="Resources\js\debugprobe_compare_engine.js" />
-	  <None Remove="Resources\js\debugprobe_compare_renderer.js" />
+		<None Remove="Resources\js\*.js" />
 	</ItemGroup>
 
 	<ItemGroup>
