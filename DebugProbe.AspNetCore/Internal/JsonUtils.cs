@@ -27,4 +27,22 @@ internal static class JsonUtils
             return json;
         }
     }
+
+    public static bool IsValidJson(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        try
+        {
+            JsonDocument.Parse(value);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

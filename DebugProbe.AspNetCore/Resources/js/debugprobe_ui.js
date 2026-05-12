@@ -1,9 +1,12 @@
 ﻿function copyText(btn) {
-    const pre = btn.parentElement.querySelector("pre");
+    const pre = btn.closest(".code-block").querySelector("pre");
+
     const text = pre.dataset.copy ?? pre.innerText;
+
     navigator.clipboard.writeText(text);
 
     btn.innerText = "Copied";
+
     setTimeout(() => btn.innerText = "Copy", 1500);
 }
 

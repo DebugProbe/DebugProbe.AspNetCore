@@ -180,23 +180,68 @@ function renderSideBySideJson(comparison, localJson, remoteJson ) {
         <div class="json-compare">
 
             <div>
-                <b>Local</b>
-
-                ${comparison.localError ? `<div class="json-error">${comparison.localError}</div>` : ''}
+                <div class="compare-pane-title">
+                    <b>Local</b>
+                    ${renderPayloadBadge(localJson)}
+                </div>
 
                 ${renderAlignedJson(comparison.local,localJson)}
             </div>
 
             <div>
-                <b>Remote</b>
-
-                ${comparison.remoteError ? `<div class="json-error">${comparison.remoteError}</div>` : ''}
+                <div class="compare-pane-title">
+                    <b>Remote</b>
+                    ${renderPayloadBadge(remoteJson)}
+                </div>
 
                 ${renderAlignedJson(comparison.remote, remoteJson )}
             </div>
 
         </div>
     `;
+}
+
+function renderPayloadBadge(value) {
+
+    const payloadType = getPayloadType(value);
+
+    return `<span class="code-badge ${payloadType.className}">${payloadType.label}</span>`;
+}
+
+function getPayloadType(value) {
+
+    if (!value || !value.trim()) {
+        return {
+            label: 'Empty',
+            className: 'payload-empty'
+        };
+    }
+
+    try {
+        JSON.parse(value);
+
+        return {
+            label: 'JSON',
+            className: 'payload-json'
+        };
+    } catch {
+        return looksLikeJson(value)
+            ? {
+                label: 'Invalid JSON',
+                className: 'payload-invalid-json'
+            }
+            : {
+                label: 'Plain Text',
+                className: 'payload-text'
+            };
+    }
+}
+
+function looksLikeJson(value) {
+
+    const trimmed = value.trimStart();
+
+    return trimmed.startsWith('{') || trimmed.startsWith('[');
 }
 
 function renderAccordionSection(title, content, expanded = false, changes = 0) {
@@ -211,7 +256,7 @@ function renderAccordionSection(title, content, expanded = false, changes = 0) {
 
                 <div class="accordion-meta">
 
-                    ${changes > 0 ? `<span class="diff-badge">${changes}</span>` : ''}
+                    ${changes > 0 ? `<span class="code-badge diff-badge">${changes}</span>` : ''}
 
                     <span class="accordion-toggle">
                         ${expanded ? '-' : '+'}
