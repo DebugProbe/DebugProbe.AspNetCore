@@ -161,11 +161,11 @@ public static class DebugProbeExtensions
             }).ExcludeFromDescription();
 
             webApp.Map("/debug/logo.png", ctx =>
-                WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.logo-full.PNG", "image/png")
+                WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.debugprobe_logo_white_transparent.png", "image/png")
             ).ExcludeFromDescription();
 
             webApp.Map("/debug/favicon.ico", ctx =>
-                WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.favicon.ico", "image/x-icon")
+                WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.debugprobe_favicon.ico", "image/x-icon")
             ).ExcludeFromDescription();
         }
 
