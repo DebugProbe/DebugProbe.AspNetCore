@@ -16,9 +16,9 @@
 
 		<RepositoryUrl>https://github.com/georgidhristov/DebugProbe.AspNetCore</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageProjectUrl>https://github.com/georgidhristov/DebugProbe.AspNetCore</PackageProjectUrl>
+		<PackageProjectUrl>https://debugprobe.dev</PackageProjectUrl>
 
-		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -37,8 +37,8 @@
 		<EmbeddedResource Include="Resources\**\*.html" />
 		<EmbeddedResource Include="Resources\**\*.css" />
 		<EmbeddedResource Include="Resources\js\*.js" />
-		<EmbeddedResource Include="Assets\logo-full.PNG" />
-		<EmbeddedResource Include="Assets\favicon.ico" />
+		<EmbeddedResource Include="Assets\debugprobe_logo_white_transparent.png" />
+		<EmbeddedResource Include="Assets\debugprobe_favicon.ico" />
 	</ItemGroup>
 
 	<ItemGroup>
