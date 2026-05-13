@@ -1,6 +1,8 @@
-﻿# DebugProbe.AspNetCore 
+﻿﻿# DebugProbe.AspNetCore 
 
 **Debug HTTP traffic directly from inside your ASP.NET Core pipeline.**
+
+[![DebugProbe](https://raw.githubusercontent.com/georgidhristov/DebugProbe.AspNetCore/main/Assets/debugprobe_icon_white_rounded_180px.png)](https://debugprobe.dev)
 
 Live Demo: https://debugprobe.dev
 
@@ -29,10 +31,10 @@ Live Demo: https://debugprobe.dev
 ![Requests](https://raw.githubusercontent.com/georgidhristov/DebugProbe.AspNetCore/main/Assets/requests.png)
 
 ### Details
-![Details](https://raw.githubusercontent.com/georgidhristov/DebugProbe.AspNetCore/refs/heads/main/Assets/details_v1.3.0.png)
+![Details](https://raw.githubusercontent.com/georgidhristov/DebugProbe.AspNetCore/main/Assets/details_v1.4.0-preview.1.png)
 
 ### Compare
-![Compare](https://raw.githubusercontent.com/georgidhristov/DebugProbe.AspNetCore/refs/heads/main/Assets/compare_v1.3.0.png)
+![Compare](https://raw.githubusercontent.com/georgidhristov/DebugProbe.AspNetCore/main/Assets/compare_v1.4.0-preview.1.png)
 
 ---
 
@@ -73,6 +75,8 @@ Run your application, then open:
 
 http://localhost:{port}/debug
 
+![DebugProbe Short Demo](https://raw.githubusercontent.com/georgidhristov/DebugProbe.AspNetCore/main/Assets/debugprobe_demo_live_debugging.gif)
+
 
 ## Compare Responses
 
@@ -95,4 +99,4 @@ If used in production:
 
 ## License
 
-MIT
+Apache License 2.0
