@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Text;
 using DebugProbe.AspNetCore.Models;
 using DebugProbe.AspNetCore.Options;
@@ -58,14 +58,18 @@ public class DebugProbeMiddleware
         var started = Stopwatch.StartNew();
 
         var exception = false;
+        string? exceptionMessage = null;
+        string? exceptionStackTrace = null;
 
         try
         {
             await _next(context);
         }
-        catch
+        catch (Exception ex)
         {
             exception = true;
+            exceptionMessage = ex.Message;
+            exceptionStackTrace = ex.StackTrace;
             throw;
         }
         finally
@@ -100,25 +104,25 @@ public class DebugProbeMiddleware
                         $"{context.Request.Path}{context.Request.QueryString}",
                 RequestBody = Trim(requestBody),
 
-
                 // Response
                 ResponseBody = Trim(responseBody),
 
+                // Exception
+                ExceptionMessage = exceptionMessage,
+                ExceptionStackTrace = Trim(exceptionStackTrace, max: 4000),
 
                 // Headers
                 Headers = context.Request.Headers.ToDictionary(x => x.Key, x => x.Value.ToString()),
 
-
                 // Other
                 Timestamp = DateTime.UtcNow,
-             
             });
         }
     }
 
-    private string Trim(string value, int max = 2000)
+    private string Trim(string? value, int max = 2000)
     {
-        if (string.IsNullOrEmpty(value)) return value;
+        if (string.IsNullOrEmpty(value)) return value ?? string.Empty;
         return value.Length <= max ? value : value.Substring(0, max);
     }
 }
