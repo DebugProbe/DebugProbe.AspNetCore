@@ -4,18 +4,23 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+		<LangVersion>latest</LangVersion>
 
-		<PackageIcon>icon.png</PackageIcon>
 		<PackageId>DebugProbe.AspNetCore</PackageId>
 		<Version>1.4.0-preview.2</Version>
 
 		<Authors>Georgi Hristov</Authors>
-		<Description>Debug and inspect HTTP requests and responses inside ASP.NET Core apps. Capture, analyze, and compare API calls with a built-in UI.</Description>
-		<PackageTags>aspnetcore;debugging;http;middleware;api;diagnostics</PackageTags>
+
+		<Description>Debug HTTP requests and responses directly inside ASP.NET Core applications with a built-in tracing and comparison UI.</Description>
+
+		<PackageTags>aspnetcore;debugging;http;middleware;api;diagnostics;tracing;observability</PackageTags>
+
+		<PackageIcon>icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 
 		<RepositoryUrl>https://github.com/georgidhristov/DebugProbe.AspNetCore</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
+
 		<PackageProjectUrl>https://debugprobe.dev</PackageProjectUrl>
 
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
@@ -23,8 +28,10 @@
 
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
 		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
 	</PropertyGroup>
 
@@ -34,11 +41,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<EmbeddedResource Include="Assets\**\*.html" />
-		<EmbeddedResource Include="Assets\**\*.css" />
-		<EmbeddedResource Include="Assets\**\*.js" />
-		<EmbeddedResource Include="Assets\**\*.png" />
-		<EmbeddedResource Include="Assets\**\*.ico" />
+		<EmbeddedResource Include="Assets\**\*" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -50,10 +53,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.300">
-	    <PrivateAssets>all</PrivateAssets>
-	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-	  </PackageReference>
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.300">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
 	</ItemGroup>
 
 </Project>
