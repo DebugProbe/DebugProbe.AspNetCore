@@ -12,15 +12,18 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
       - name: Restore
-        run: dotnet restore DebugProbe.AspNetCore/DebugProbe.AspNetCore.csproj
+        run: dotnet restore DebugProbe.AspNetCore.sln
 
       - name: Build
-        run: dotnet build DebugProbe.AspNetCore/DebugProbe.AspNetCore.csproj --no-restore --configuration Release
+        run: dotnet build DebugProbe.AspNetCore.sln --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test DebugProbe.AspNetCore.sln --no-build --configuration Release
