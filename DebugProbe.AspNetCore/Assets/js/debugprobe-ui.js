@@ -20,3 +20,9 @@ if (clearBtn) {
         location.reload();
     });
 }
+
+document.querySelectorAll(".clickable-row[data-url]").forEach(row => {
+    row.addEventListener("click", () => {
+        window.location.assign(row.dataset.url);
+    });
+});

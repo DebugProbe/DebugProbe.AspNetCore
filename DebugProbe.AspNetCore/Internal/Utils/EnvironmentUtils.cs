@@ -1,4 +1,4 @@
-﻿namespace DebugProbe.AspNetCore.Internal;
+﻿namespace DebugProbe.AspNetCore.Internal.Utils;
 
 internal static class EnvironmentUtils
 {

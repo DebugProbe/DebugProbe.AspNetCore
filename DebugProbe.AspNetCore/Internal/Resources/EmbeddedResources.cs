@@ -1,4 +1,4 @@
-﻿namespace DebugProbe.AspNetCore.Internal;
+﻿namespace DebugProbe.AspNetCore.Internal.Resources;
 
 /// <summary>
 /// Provides access to embedded UI resources (HTML, CSS, JS) used by DebugProbe.
@@ -16,11 +16,13 @@ internal static class EmbeddedResources
 
     public static readonly Dictionary<string, string> JavaScript = new()
     {
-        ["debugprobe-compare-renderer.js"] = ResourceLoader.LoadJs("debugprobe_compare_renderer.js"),
+        ["debugprobe-compare-renderer.js"] =
+            ResourceLoader.LoadJs("debugprobe-compare-renderer.js"),
 
-        ["debugprobe-compare-engine.js"] = ResourceLoader.LoadJs("debugprobe_compare_engine.js"),
+        ["debugprobe-compare-engine.js"] =
+            ResourceLoader.LoadJs("debugprobe-compare-engine.js"),
 
-        ["debugprobe-ui.js"] = ResourceLoader.LoadJs("debugprobe_ui.js")
+        ["debugprobe-ui.js"] =
+            ResourceLoader.LoadJs("debugprobe-ui.js")
     };
 }
-

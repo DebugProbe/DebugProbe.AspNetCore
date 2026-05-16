@@ -24,7 +24,7 @@
 
             const text = await res.text();
 
-            setCompareResult(`<b style="color:red">${text || 'Compare failed'}</b>`);
+            setCompareResult(`<b style="color:red">${escapeHtml(text || 'Compare failed')}</b>`);
 
             return;
         }
@@ -33,10 +33,10 @@
 
         setCompareResult(renderCompare(result));
 
-    } catch {
+    } catch (error) {
 
         setCompareResult(
-            `<b style="color:red">${error}</b>`
+            `<b style="color:red">${escapeHtml(error.message || 'Compare failed')}</b>`
         );
     }
 };

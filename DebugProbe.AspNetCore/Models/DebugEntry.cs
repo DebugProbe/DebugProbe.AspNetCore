@@ -19,10 +19,6 @@ public class DebugEntry
     public long ResponseSize { get; set; }
     public string ResponseBody { get; set; } = default!;
 
-    // Exception (captured when middleware catches an unhandled error)
-    public string? ExceptionMessage { get; set; }
-    public string? ExceptionStackTrace { get; set; }
-
     // Headers
     public Dictionary<string, string> Headers { get; set; } = new();
 

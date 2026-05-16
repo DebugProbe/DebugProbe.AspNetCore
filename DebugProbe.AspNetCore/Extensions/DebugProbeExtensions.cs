@@ -1,5 +1,8 @@
 ﻿using System.Net.Http.Json;
-using DebugProbe.AspNetCore.Internal;
+using DebugProbe.AspNetCore.Internal.Compare;
+using DebugProbe.AspNetCore.Internal.Rendering;
+using DebugProbe.AspNetCore.Internal.Resources;
+using DebugProbe.AspNetCore.Internal.Utils;
 using DebugProbe.AspNetCore.Middleware;
 using DebugProbe.AspNetCore.Models;
 using DebugProbe.AspNetCore.Options;
@@ -12,7 +15,10 @@ namespace DebugProbe.AspNetCore.Extensions;
 
 public static class DebugProbeExtensions
 {
-    private static readonly HttpClient Http = new();
+    private static readonly HttpClient Http = new()
+    {
+        Timeout = TimeSpan.FromSeconds(5)
+    };
 
     public static IServiceCollection AddDebugProbe(
         this IServiceCollection services,
@@ -66,7 +72,9 @@ public static class DebugProbeExtensions
                 await ctx.Response.WriteAsync(html);
             }).ExcludeFromDescription();
 
-            webApp.MapGet("/debug/compare/{id}", async (string id, string baseUrl, string remoteTraceId, DebugEntryStore store) =>
+            webApp.MapGet("/debug/compare/{id}", async (string id, string baseUrl, string remoteTraceId,
+                DebugEntryStore store,
+                DebugProbeOptions options) =>
             {
                 var localEnvironment = store.Environment;
                 var localEntry = store.Get(id);
@@ -75,14 +83,23 @@ public static class DebugProbeExtensions
                     return Results.NotFound("Local trace not found");
                 }
 
+                if (!Guid.TryParse(remoteTraceId, out _))
+                {
+                    return Results.BadRequest("Invalid remote trace id");
+                }
 
-                var normalizedBaseUrl = baseUrl.TrimEnd('/');
+                var validation = await CompareUrlValidator.ValidateCompareBaseUrlAsync(baseUrl, options);
+
+                if (!validation.IsValid)
+                {
+                    return Results.BadRequest(validation.Error);
+                }
 
                 var remoteEnvironmentUrl =
-                    $"{normalizedBaseUrl}/debug/environment";
+                    new Uri(validation.BaseUri!, "/debug/environment");
 
                 var remoteEntryUrl =
-                    $"{normalizedBaseUrl}/debug/json/{remoteTraceId}";
+                    new Uri(validation.BaseUri!, $"/debug/json/{remoteTraceId}");
 
                 DebugEntry? remoteEntry;
                 DebugEnvironment? remoteEnvironment;
@@ -161,30 +178,16 @@ public static class DebugProbeExtensions
             }).ExcludeFromDescription();
 
             webApp.Map("/debug/logo.png", ctx =>
-                WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.debugprobe_logo_white_transparent.png", "image/png")
+                EmbeddedAssetWriter.WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.images.debugprobe_logo_white_transparent.png", "image/png")
             ).ExcludeFromDescription();
 
             webApp.Map("/debug/favicon.ico", ctx =>
-                WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.debugprobe_favicon.ico", "image/x-icon")
+                EmbeddedAssetWriter.WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.images.debugprobe_favicon.ico", "image/x-icon")
             ).ExcludeFromDescription();
         }
 
         return app;
     }
 
-    private static async Task WriteEmbeddedAsset(HttpContext ctx, string resourceName, string contentType)
-    {
-        ctx.Response.ContentType = contentType;
-
-        var assembly = typeof(DebugProbeMiddleware).Assembly;
-        using var stream = assembly.GetManifestResourceStream(resourceName);
-
-        if (stream is null)
-        {
-            ctx.Response.StatusCode = 404;
-            return;
-        }
-
-        await stream.CopyToAsync(ctx.Response.Body);
-    }
+   
 }

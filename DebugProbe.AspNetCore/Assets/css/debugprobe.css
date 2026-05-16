@@ -151,6 +151,10 @@ tr:hover {
     background: #f1f1f1;
 }
 
+.clickable-row {
+    cursor: pointer;
+}
+
 /* =========================
    Section Titles
 ========================= */
@@ -272,6 +276,10 @@ pre {
 .payload-empty {
     background: #444;
     color: #ddd;
+}
+
+.payload-hidden {
+    display: none;
 }
 
 .diff-badge {

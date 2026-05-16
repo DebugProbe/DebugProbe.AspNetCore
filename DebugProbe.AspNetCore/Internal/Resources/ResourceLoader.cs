@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 
-namespace DebugProbe.AspNetCore.Internal;
+namespace DebugProbe.AspNetCore.Internal.Resources;
 
 /// <summary>
 /// Loads embedded resources (HTML, CSS, JS) from the assembly.
@@ -8,7 +8,7 @@ namespace DebugProbe.AspNetCore.Internal;
 internal static class ResourceLoader
 {
     private static readonly Assembly Assembly = typeof(ResourceLoader).Assembly;
-    private const string Base = "DebugProbe.AspNetCore.Resources.";
+    private const string Base = "DebugProbe.AspNetCore.Assets.";
 
     public static string LoadJs(string file)
         => Load("js", file);

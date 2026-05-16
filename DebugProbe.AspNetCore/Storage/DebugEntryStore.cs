@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
-using DebugProbe.AspNetCore.Internal;
+using DebugProbe.AspNetCore.Internal.Utils;
 using DebugProbe.AspNetCore.Models;
 using DebugProbe.AspNetCore.Options;
 
