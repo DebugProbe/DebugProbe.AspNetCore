@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using DebugProbe.AspNetCore.Models;
 
-namespace DebugProbe.AspNetCore.Internal;
+namespace DebugProbe.AspNetCore.Internal.Compare;
 
 /// <summary>
 /// Compares two DebugEntry instances and produces a list of differences,

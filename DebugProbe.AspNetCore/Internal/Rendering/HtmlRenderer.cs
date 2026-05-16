@@ -1,7 +1,9 @@
 using System.Net;
+using DebugProbe.AspNetCore.Internal.Resources;
+using DebugProbe.AspNetCore.Internal.Utils;
 using DebugProbe.AspNetCore.Models;
 
-namespace DebugProbe.AspNetCore.Internal;
+namespace DebugProbe.AspNetCore.Internal.Rendering;
 
 /// <summary>
 /// Renders DebugProbe UI pages (layout, index, details) using embedded HTML templates.
@@ -23,7 +25,7 @@ internal static class HtmlRenderer
     public static string RenderIndexPage(List<DebugEntry> items)
     {
         var rows = string.Join("", items.Select(x => $@"
-        <tr onclick=""window.location='/debug/{x.Id}'"" style=""cursor:pointer"">
+        <tr data-url=""/debug/{Encode(x.Id)}"" class=""clickable-row"">
             <td>{x.Timestamp:HH:mm:ss}</td>
             <td>{Encode(x.Method)}</td>
             <td>{Encode(x.Path)}</td>
@@ -95,7 +97,7 @@ internal static class HtmlRenderer
 
     private static string GetStatusText(int statusCode)
     {
-        return $"{statusCode} {((HttpStatusCode)statusCode)}";
+        return $"{statusCode} {(HttpStatusCode)statusCode}";
     }
 
     private static string GetStatusClass(int statusCode)
