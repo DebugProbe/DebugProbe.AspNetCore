@@ -57,7 +57,7 @@ public class DebugProbeMiddleware
             return;
         }
 
-        var maxBodySize = _options.MaxBodyCaptureSize;
+        var maxBodySize = _options.MaxBodyCaptureSizeKb * 1024;
 
         var requestBody = await CaptureRequestBodyAsync(context, maxBodySize);
 
