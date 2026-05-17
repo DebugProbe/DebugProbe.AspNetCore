@@ -7,7 +7,7 @@
 		<LangVersion>latest</LangVersion>
 
 		<PackageId>DebugProbe.AspNetCore</PackageId>
-		<Version>1.4.0-preview.2</Version>
+		<Version>1.4.0</Version>
 
 		<Authors>Georgi Hristov</Authors>
 
