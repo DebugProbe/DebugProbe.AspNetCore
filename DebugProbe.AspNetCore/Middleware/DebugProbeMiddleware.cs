@@ -35,14 +35,6 @@ public class DebugProbeMiddleware
 
     public async Task Invoke(HttpContext context, DebugEntryStore store)
     {
-        var endpoint = context.GetEndpoint();
-
-        if (endpoint is null)
-        {
-            await _next(context);
-            return;
-        }
-
         var path = context.Request.Path.Value ?? string.Empty;
 
         var ignored =
