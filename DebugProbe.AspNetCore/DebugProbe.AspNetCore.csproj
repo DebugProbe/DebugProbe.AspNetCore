@@ -7,7 +7,7 @@
 		<LangVersion>latest</LangVersion>
 
 		<PackageId>DebugProbe.AspNetCore</PackageId>
-		<Version>1.4.0</Version>
+		<Version>1.4.1-preview.1</Version>
 
 		<Authors>Georgi Hristov</Authors>
 
@@ -41,11 +41,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<EmbeddedResource Include="Assets\**\*" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<None Remove="Assets\**\*" />
+		<EmbeddedResource Include="Assets\**\*.html" />
+		<EmbeddedResource Include="Assets\**\*.css" />
+		<EmbeddedResource Include="Assets\**\*.js" />
+		<EmbeddedResource Include="Assets\**\*.png" />
+		<EmbeddedResource Include="Assets\**\*.ico" />
 	</ItemGroup>
 
 	<ItemGroup>
