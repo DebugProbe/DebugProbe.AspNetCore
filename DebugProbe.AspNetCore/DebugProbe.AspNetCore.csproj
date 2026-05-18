@@ -41,11 +41,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<EmbeddedResource Include="Assets\**\*.html" />
-		<EmbeddedResource Include="Assets\**\*.css" />
-		<EmbeddedResource Include="Assets\**\*.js" />
-		<EmbeddedResource Include="Assets\**\*.png" />
-		<EmbeddedResource Include="Assets\**\*.ico" />
+		<EmbeddedResource Include="Assets\**\*" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Remove="Assets\**\*" />
 	</ItemGroup>
 
 	<ItemGroup>

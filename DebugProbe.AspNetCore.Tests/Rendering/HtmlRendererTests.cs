@@ -64,7 +64,7 @@ public class HtmlRendererTests
         var entry = CreateEntry();
         entry.Method = "<script>alert(1)</script>";
         entry.Path = "/orders/<bad>";
-        entry.Headers["X-Unsafe"] = "<img src=x onerror=alert(1)>";
+        entry.RequestHeaders["X-Unsafe"] = "<img src=x onerror=alert(1)>";
 
         var html = HtmlRenderer.RenderDetailsPage(
             entry,
@@ -94,7 +94,15 @@ public class HtmlRendererTests
             DurationMs = 12,
             Timestamp = new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero),
             RequestTimeUtc = new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero),
-            Headers = new Dictionary<string, string> { ["X-Test"] = "yes" }
+            RequestHeaders = new Dictionary<string, string>
+            {
+                ["X-Test"] = "yes"
+            },
+
+            ResponseHeaders = new Dictionary<string, string>
+            {
+                ["Content-Type"] = "application/json"
+            }
         };
     }
 

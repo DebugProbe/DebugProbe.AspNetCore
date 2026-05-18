@@ -43,8 +43,11 @@ internal static class HtmlRenderer
 
     public static string RenderDetailsPage(DebugEntry x, DebugEnvironment e, string req, string res)
     {
-        var headers = string.Join("", x.Headers.Select(h =>
-            $"<tr><td>{Encode(h.Key)}</td><td>{Encode(h.Value)}</td></tr>"));
+        //var headers = string.Join("", x.Reqe.Select(h =>
+        //    $"<tr><td>{Encode(h.Key)}</td><td>{Encode(h.Value)}</td></tr>"));
+
+        var requestHeaders = string.Join(Environment.NewLine, x.RequestHeaders.Select(h => $"{h.Key}: {h.Value}"));
+        var responseHeaders = string.Join(Environment.NewLine, x.ResponseHeaders.Select(h => $"{h.Key}: {h.Value}"));
 
         var pathWithQuery = string.IsNullOrEmpty(x.Query)
             ? x.Path
@@ -79,13 +82,15 @@ internal static class HtmlRenderer
             .Replace("{{requestUrl}}", Encode(string.IsNullOrEmpty(x.RequestUrl) ? "" : x.RequestUrl))
             .Replace("{{requestType}}", GetPayloadType(req))
             .Replace("{{requestTypeClass}}", GetPayloadTypeClass(req))
+            .Replace("{{requestHeaders}}", Encode(requestHeaders))
             .Replace("{{request}}", Encode(string.IsNullOrEmpty(req) ? "" : req))
 
             .Replace("{{responseType}}", GetPayloadType(res))
             .Replace("{{responseTypeClass}}", GetPayloadTypeClass(res))
-            .Replace("{{response}}", Encode(string.IsNullOrEmpty(res) ? "" : res))
+            .Replace("{{responseHeaders}}", Encode(responseHeaders))
+            .Replace("{{response}}", Encode(string.IsNullOrEmpty(res) ? "" : res));
 
-            .Replace("{{headers}}", headers);
+            //.Replace("{{headers}}", headers);
 
         return BuildLayout(content);
     }

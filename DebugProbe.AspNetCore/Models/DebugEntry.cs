@@ -20,7 +20,8 @@ public class DebugEntry
     public string ResponseBody { get; set; } = default!;
 
     // Headers
-    public Dictionary<string, string> Headers { get; set; } = new();
+    public Dictionary<string, string> RequestHeaders { get; set; } = new();
+    public Dictionary<string, string> ResponseHeaders { get; set; } = new();
 
     // Metadata
     public DateTimeOffset Timestamp { get; set; }

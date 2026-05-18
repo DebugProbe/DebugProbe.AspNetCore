@@ -95,6 +95,11 @@ public class DebugProbeMiddleware
                 RequestSize = context.Request.ContentLength ?? Encoding.UTF8.GetByteCount(requestBody),
                 ResponseSize = Encoding.UTF8.GetByteCount(responseBody),
 
+
+                // Request Headers
+                RequestHeaders = context.Request.Headers.ToDictionary(x => x.Key, x => 
+                SensitiveHeaders.Contains(x.Key) ? "[REDACTED]" : x.Value.ToString()),
+
                 // Request
                 RequestUrl = $"{context.Request.Scheme}://{context.Request.Host}" + 
                         $"{context.Request.Path}{context.Request.QueryString}",
@@ -103,10 +108,9 @@ public class DebugProbeMiddleware
                 // Response
                 ResponseBody = Trim(responseBody, maxBodySize),
 
-                // Headers
-                Headers = context.Request.Headers.ToDictionary(
-                    x => x.Key,
-                    x => SensitiveHeaders.Contains(x.Key) ? "[REDACTED]" : x.Value.ToString()),
+                // Response Headers
+                ResponseHeaders = context.Response.Headers.ToDictionary(x => x.Key, x => 
+                SensitiveHeaders.Contains(x.Key)? "[REDACTED]" : x.Value.ToString()),
 
                 // Other
                 Timestamp = DateTime.UtcNow,
