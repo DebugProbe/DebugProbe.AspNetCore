@@ -1,21 +1,72 @@
-﻿<div class="container">
-    <div class="toolbar">
-        <div></div>
-        <div class="toolbar-right">
-            <button id="clearBtn" class="btn-clear">Clear</button>
+<div class="container">
+    <div class="index-header">
+        <div>
+            <h2>Requests</h2>
+            <p class="muted">Showing <span id="visibleCount">{{total_count}}</span> of {{total_count}}</p>
         </div>
     </div>
-    <table>
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>Method</th>
-                <th>Path</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {{rows}}
-        </tbody>
-    </table>
+
+    <div class="stats-bar" aria-label="Request summary">
+        <div class="stat-tile">
+            <strong>{{total_requests}}</strong>
+            <span>Requests</span>
+        </div>
+        <div class="stat-tile">
+            <strong>{{avg_response_time}}</strong>
+            <span>Avg</span>
+        </div>
+        <div class="stat-tile">
+            <strong>{{slow_requests}}</strong>
+            <span>Over 1s</span>
+        </div>
+        <div class="stat-tile">
+            <strong>{{error_rate}}</strong>
+            <span>Errors</span>
+        </div>
+    </div>
+
+    <div class="filters" aria-label="Request filters">
+        <input id="requestSearch" type="search" placeholder="Search path, method, status, or trace id" autocomplete="off" />
+        <select id="methodFilter" aria-label="Filter by method">
+            <option value="">All methods</option>
+            {{method_options}}
+        </select>
+        <select id="statusFilter" aria-label="Filter by status">
+            <option value="">All statuses</option>
+            <option value="2">2xx</option>
+            <option value="3">3xx</option>
+            <option value="4">4xx</option>
+            <option value="5">5xx</option>
+        </select>
+        <button id="resetFiltersBtn" class="btn-secondary" type="button">Reset</button>
+        <button id="clearBtn" class="btn-secondary btn-clear" type="button" title="Clear requests" aria-label="Clear requests">
+            <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                <path d="M3 6h18" />
+                <path d="M8 6V4h8v2" />
+                <path d="M6 6l1 14h10l1-14" />
+                <path d="M10 11v5" />
+                <path d="M14 11v5" />
+            </svg>
+            <span>Clear</span>
+        </button>
+    </div>
+
+    <div class="table-wrap">
+        <table id="requestTable">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Method</th>
+                    <th>Path</th>
+                    <th>Status</th>
+                    <th>Duration</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{rows}}
+            </tbody>
+        </table>
+    </div>
+
+    <div id="emptyFilterState" class="empty-state" hidden>No matching requests</div>
 </div>
