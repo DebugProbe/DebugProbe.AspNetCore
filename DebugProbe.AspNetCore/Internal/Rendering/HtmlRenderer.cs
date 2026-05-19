@@ -60,6 +60,7 @@ internal static class HtmlRenderer
             .Replace("{{path}}", Encode(pathWithQuery))
             .Replace("{{status}}", GetStatusText(x.StatusCode))
             .Replace("{{statusClass}}", statusClass)
+            .Replace("{{responseGroupClass}}", GetResponseGroupClass(x.StatusCode))
             .Replace("{{responseStatusCode}}", x.StatusCode.ToString())
             .Replace("{{traceId}}", x.Id.ToString())
 
@@ -80,13 +81,9 @@ internal static class HtmlRenderer
             .Replace("{{assemblyVersion}}", Encode(e.AssemblyVersion))
 
             .Replace("{{requestUrl}}", Encode(string.IsNullOrEmpty(x.RequestUrl) ? "" : x.RequestUrl))
-            .Replace("{{requestType}}", GetPayloadType(req))
-            .Replace("{{requestTypeClass}}", GetPayloadTypeClass(req))
             .Replace("{{requestHeaders}}", Encode(requestHeaders))
             .Replace("{{request}}", Encode(string.IsNullOrEmpty(req) ? "" : req))
 
-            .Replace("{{responseType}}", GetPayloadType(res))
-            .Replace("{{responseTypeClass}}", GetPayloadTypeClass(res))
             .Replace("{{responseHeaders}}", Encode(responseHeaders))
             .Replace("{{response}}", Encode(string.IsNullOrEmpty(res) ? "" : res));
 
@@ -117,56 +114,9 @@ internal static class HtmlRenderer
         };
     }
 
-    private static string GetPayloadType(string value)
+    private static string GetResponseGroupClass(int statusCode)
     {
-        if (IsCapturePlaceholder(value))
-        {
-            return string.Empty;
-        }
-
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return "Empty";
-        }
-
-        if (JsonUtils.IsValidJson(value))
-        {
-            return "JSON";
-        }
-
-        return LooksLikeJson(value) ? "Invalid JSON" : "Plain Text";
-    }
-
-    private static string GetPayloadTypeClass(string value)
-    {
-        if (IsCapturePlaceholder(value))
-        {
-            return "payload-hidden";
-        }
-
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return "payload-empty";
-        }
-
-        if (JsonUtils.IsValidJson(value))
-        {
-            return "payload-json";
-        }
-
-        return LooksLikeJson(value) ? "payload-invalid-json" : "payload-text";
-    }
-
-    private static bool IsCapturePlaceholder(string value)
-    {
-        return string.Equals(value, "[Body too large]", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool LooksLikeJson(string value)
-    {
-        var trimmed = value.TrimStart();
-
-        return trimmed.StartsWith('{') || trimmed.StartsWith('[');
+        return statusCode >= 400 ? "response-error" : "";
     }
 
 }

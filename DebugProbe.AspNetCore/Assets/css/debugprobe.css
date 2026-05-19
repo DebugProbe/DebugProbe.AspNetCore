@@ -28,6 +28,10 @@ h3 {
     margin-bottom: 10px;
 }
 
+h4 {
+    margin: 0;
+}
+
 /* =========================
    Layout
 ========================= */
@@ -159,16 +163,96 @@ tr:hover {
    Section Titles
 ========================= */
 
+.payload-group {
+    margin-top: 24px;
+    padding: 18px;
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-left-width: 5px;
+    border-radius: 8px;
+}
+
+.request-group {
+    border-left-color: #2f80ed;
+}
+
+.response-group {
+    border-left-color: #27ae60;
+}
+
+.response-group.response-error {
+    border-left-color: #e74c3c;
+}
+
+.compare-group {
+    border-left-color: #f39c12;
+}
+
+.compare-description {
+    margin-top: 4px;
+    color: #777;
+    font-size: 0.9rem;
+}
+
+.payload-group-title {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.payload-group-title h3 {
+    margin: 0;
+}
+
 .section-title {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-top: 25px;
-    margin-bottom: 10px;
+    margin-top: 18px;
+    margin-bottom: 8px;
 }
 
-.section-title h3 {
+.payload-group-title + .section-title {
+    margin-top: 0;
+}
+
+.section-title h3,
+.section-title h4 {
     margin: 0;
+}
+
+.section-title h4 {
+    color: #555;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.compare-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-bottom: 14px;
+}
+
+.compare-controls input {
+    min-width: 220px;
+    flex: 1;
+}
+
+@media (max-width: 640px) {
+    .container {
+        padding: 14px;
+    }
+
+    .payload-group {
+        padding: 14px;
+    }
+
+    .compare-controls input,
+    .compare-controls button {
+        width: 100%;
+    }
 }
 
 /* =========================
@@ -239,8 +323,7 @@ pre {
 }
 
 .code-badge,
-.status,
-.diff-badge {
+.status {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -251,40 +334,6 @@ pre {
 .code-badge {
     padding: 4px 8px;
     font-size: 12px;
-}
-
-.payload-json {
-    background: #183d24;
-    color: #6ddf8b;
-}
-
-.payload-invalid-json {
-    background: #4a1717;
-    color: #ff8a8a;
-}
-
-.payload-text {
-    background: #4a3112;
-    color: #ffb84d;
-}
-
-.payload-url {
-    background: #1d3557;
-    color: #7cc7ff;
-}
-
-.payload-empty {
-    background: #444;
-    color: #ddd;
-}
-
-.payload-hidden {
-    display: none;
-}
-
-.diff-badge {
-    background: #4a1717;
-    color: #ff8a8a;
 }
 
 /* =========================

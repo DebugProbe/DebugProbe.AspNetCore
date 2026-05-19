@@ -46,16 +46,16 @@ public class HtmlRendererTests
     }
 
     [Fact]
-    public void Payload_badges_render_for_json_empty_text_and_hidden_payloads()
+    public void Payload_groups_render_for_json_empty_text_and_hidden_payloads()
     {
         var jsonHtml = HtmlRenderer.RenderDetailsPage(CreateEntry(), CreateEnvironment(), "{\"ok\":true}", "plain");
         var emptyHtml = HtmlRenderer.RenderDetailsPage(CreateEntry(), CreateEnvironment(), "", "");
         var hiddenHtml = HtmlRenderer.RenderDetailsPage(CreateEntry(), CreateEnvironment(), "[Body too large]", "[Body too large]");
 
-        Assert.Contains("payload-json", jsonHtml);
-        Assert.Contains("payload-text", jsonHtml);
-        Assert.Contains("payload-empty", emptyHtml);
-        Assert.Contains("payload-hidden", hiddenHtml);
+        Assert.Contains("Request", jsonHtml);
+        Assert.Contains("Response", jsonHtml);
+
+        Assert.Contains("[Body too large]", hiddenHtml);
     }
 
     [Fact]
