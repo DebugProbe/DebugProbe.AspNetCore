@@ -25,20 +25,33 @@ internal static class HtmlRenderer
     public static string RenderIndexPage(List<DebugEntry> items)
     {
         var rows = string.Join("", items.Select(x => $@"
-        <tr data-url=""/debug/{Encode(x.Id)}"" class=""clickable-row"">
+        <tr data-url=""/debug/{Encode(x.Id)}""
+            data-method=""{Encode(x.Method)}""
+            data-status-family=""{x.StatusCode / 100}""
+            data-search=""{Encode($"{x.Id} {x.Method} {x.Path} {x.Query} {x.StatusCode}")}""
+            class=""clickable-row"">
             <td>{x.Timestamp:HH:mm:ss}</td>
-            <td>{Encode(x.Method)}</td>
-            <td>{Encode(x.Path)}</td>
-            <td style=""color:{(x.StatusCode >= 400 ? "#e74c3c" : "#2ecc71")}; font-weight:bold;"">
-                {x.StatusCode}
-            </td>
+            <td><span class=""method-pill"">{Encode(x.Method)}</span></td>
+            <td>{Encode(string.IsNullOrEmpty(x.Query) ? x.Path : $"{x.Path}{x.Query}")}</td>
+            <td><span class=""status {GetStatusClass(x.StatusCode)}"">{x.StatusCode}</span></td>
+            <td>{x.DurationMs} ms</td>
         </tr>"
         ));
 
         if (string.IsNullOrEmpty(rows))
-            rows = "<tr><td colspan='4'>No data</td></tr>";
+            rows = "<tr class='empty-row'><td colspan='5'>No data</td></tr>";
 
-        return BuildLayout(EmbeddedResources.Index.Replace("{{rows}}", rows));
+        var methodOptions = string.Join("", items
+            .Select(x => x.Method)
+            .Where(method => !string.IsNullOrWhiteSpace(method))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(method => method, StringComparer.OrdinalIgnoreCase)
+            .Select(method => $@"<option value=""{Encode(method)}"">{Encode(method)}</option>"));
+
+        return BuildLayout(EmbeddedResources.Index
+            .Replace("{{rows}}", rows)
+            .Replace("{{total_count}}", items.Count.ToString())
+            .Replace("{{method_options}}", methodOptions));
     }
 
     public static string RenderDetailsPage(DebugEntry x, DebugEnvironment e, string req, string res)

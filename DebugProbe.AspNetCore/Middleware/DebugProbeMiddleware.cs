@@ -38,10 +38,11 @@ public class DebugProbeMiddleware
         var path = context.Request.Path.Value ?? string.Empty;
 
         var ignored =
-        path.StartsWith("/debug") ||
-        path.StartsWith("/swagger") ||
-        _options.IgnorePaths.Any(x =>
-            path.StartsWith(x, StringComparison.OrdinalIgnoreCase));
+       path.StartsWith("/debug", StringComparison.OrdinalIgnoreCase) ||
+       path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase) ||
+       path.StartsWith("/.well-known", StringComparison.OrdinalIgnoreCase) ||
+       _options.IgnorePaths.Any(x =>
+           path.StartsWith(x, StringComparison.OrdinalIgnoreCase));
 
         if (ignored)
         {
@@ -75,6 +76,9 @@ public class DebugProbeMiddleware
         finally
         {
             started.Stop();
+            var durationMs = started.ElapsedTicks > 0
+                ? Math.Max(1, started.ElapsedMilliseconds)
+                : 0;
 
             context.Response.Body = originalBody;
 
@@ -91,7 +95,7 @@ public class DebugProbeMiddleware
                 Query = context.Request.QueryString.ToString(),
                 StatusCode = statusCode,
                 RequestTimeUtc = DateTime.UtcNow,
-                DurationMs = started.ElapsedMilliseconds,
+                DurationMs = durationMs,
                 RequestSize = context.Request.ContentLength ?? Encoding.UTF8.GetByteCount(requestBody),
                 ResponseSize = Encoding.UTF8.GetByteCount(responseBody),
 
