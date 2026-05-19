@@ -77,6 +77,39 @@ h4 {
     margin-bottom: 14px;
 }
 
+.stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.stat-tile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 52px;
+    padding: 0 16px;
+    background: #fff;
+    border: 1px solid #e9e9e9;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.stat-tile strong {
+    color: #1f2937;
+    font-size: 22px;
+    line-height: 1;
+}
+
+.stat-tile span {
+    color: #666;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
 .filters input,
 .filters select {
     min-height: 36px;
@@ -323,6 +356,10 @@ tbody tr:last-child td {
 
     .filters {
         grid-template-columns: 1fr;
+    }
+
+    .stats-bar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .payload-group {

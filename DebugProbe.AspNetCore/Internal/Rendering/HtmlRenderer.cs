@@ -24,6 +24,8 @@ internal static class HtmlRenderer
 
     public static string RenderIndexPage(List<DebugEntry> items)
     {
+        const int slowRequestThresholdMs = 1000;
+
         var rows = string.Join("", items.Select(x => $@"
         <tr data-url=""/debug/{Encode(x.Id)}""
             data-method=""{Encode(x.Method)}""
@@ -48,10 +50,23 @@ internal static class HtmlRenderer
             .OrderBy(method => method, StringComparer.OrdinalIgnoreCase)
             .Select(method => $@"<option value=""{Encode(method)}"">{Encode(method)}</option>"));
 
+        var totalRequests = items.Count;
+        var averageResponseMs = totalRequests == 0
+            ? 0
+            : (int)Math.Round(items.Average(x => x.DurationMs));
+        var slowRequests = items.Count(x => x.DurationMs >= slowRequestThresholdMs);
+        var errorRate = totalRequests == 0
+            ? 0
+            : items.Count(x => x.StatusCode >= 400) * 100d / totalRequests;
+
         return BuildLayout(EmbeddedResources.Index
             .Replace("{{rows}}", rows)
             .Replace("{{total_count}}", items.Count.ToString())
-            .Replace("{{method_options}}", methodOptions));
+            .Replace("{{method_options}}", methodOptions)
+            .Replace("{{total_requests}}", FormatCompactNumber(totalRequests))
+            .Replace("{{avg_response_time}}", $"{averageResponseMs} ms")
+            .Replace("{{slow_requests}}", FormatCompactNumber(slowRequests))
+            .Replace("{{error_rate}}", $"{errorRate:0.#}%"));
     }
 
     public static string RenderDetailsPage(DebugEntry x, DebugEnvironment e, string req, string res)
@@ -130,6 +145,16 @@ internal static class HtmlRenderer
     private static string GetResponseGroupClass(int statusCode)
     {
         return statusCode >= 400 ? "response-error" : "";
+    }
+
+    private static string FormatCompactNumber(int value)
+    {
+        return value switch
+        {
+            >= 1_000_000 => $"{value / 1_000_000d:0.#}M",
+            >= 1_000 => $"{value / 1_000d:0.#}K",
+            _ => value.ToString()
+        };
     }
 
 }

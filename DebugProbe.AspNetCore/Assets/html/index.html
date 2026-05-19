@@ -6,6 +6,25 @@
         </div>
     </div>
 
+    <div class="stats-bar" aria-label="Request summary">
+        <div class="stat-tile">
+            <strong>{{total_requests}}</strong>
+            <span>Requests</span>
+        </div>
+        <div class="stat-tile">
+            <strong>{{avg_response_time}}</strong>
+            <span>Avg</span>
+        </div>
+        <div class="stat-tile">
+            <strong>{{slow_requests}}</strong>
+            <span>Slow</span>
+        </div>
+        <div class="stat-tile">
+            <strong>{{error_rate}}</strong>
+            <span>Errors</span>
+        </div>
+    </div>
+
     <div class="filters" aria-label="Request filters">
         <input id="requestSearch" type="search" placeholder="Search path, method, status, or trace id" autocomplete="off" />
         <select id="methodFilter" aria-label="Filter by method">
