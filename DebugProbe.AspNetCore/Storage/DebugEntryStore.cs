@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Reflection;
 using DebugProbe.AspNetCore.Internal.Utils;
+using DebugProbe.AspNetCore.Middleware;
 using DebugProbe.AspNetCore.Models;
 using DebugProbe.AspNetCore.Options;
 

@@ -182,7 +182,6 @@ function renderSideBySideJson(comparison, localJson, remoteJson ) {
             <div>
                 <div class="compare-pane-title">
                     <b>Local</b>
-                    ${renderPayloadBadge(localJson)}
                 </div>
 
                 ${renderAlignedJson(comparison.local,localJson)}
@@ -191,7 +190,6 @@ function renderSideBySideJson(comparison, localJson, remoteJson ) {
             <div>
                 <div class="compare-pane-title">
                     <b>Remote</b>
-                    ${renderPayloadBadge(remoteJson)}
                 </div>
 
                 ${renderAlignedJson(comparison.remote, remoteJson )}
@@ -199,49 +197,6 @@ function renderSideBySideJson(comparison, localJson, remoteJson ) {
 
         </div>
     `;
-}
-
-function renderPayloadBadge(value) {
-
-    const payloadType = getPayloadType(value);
-
-    return `<span class="code-badge ${payloadType.className}">${payloadType.label}</span>`;
-}
-
-function getPayloadType(value) {
-
-    if (!value || !value.trim()) {
-        return {
-            label: 'Empty',
-            className: 'payload-empty'
-        };
-    }
-
-    try {
-        JSON.parse(value);
-
-        return {
-            label: 'JSON',
-            className: 'payload-json'
-        };
-    } catch {
-        return looksLikeJson(value)
-            ? {
-                label: 'Invalid JSON',
-                className: 'payload-invalid-json'
-            }
-            : {
-                label: 'Plain Text',
-                className: 'payload-text'
-            };
-    }
-}
-
-function looksLikeJson(value) {
-
-    const trimmed = value.trimStart();
-
-    return trimmed.startsWith('{') || trimmed.startsWith('[');
 }
 
 function renderAccordionSection(title, content, expanded = false, changes = 0) {
@@ -255,9 +210,6 @@ function renderAccordionSection(title, content, expanded = false, changes = 0) {
                 </div>
 
                 <div class="accordion-meta">
-
-                    ${changes > 0 ? `<span class="code-badge diff-badge">${changes}</span>` : ''}
-
                     <span class="accordion-toggle">
                         ${expanded ? '-' : '+'}
                     </span>

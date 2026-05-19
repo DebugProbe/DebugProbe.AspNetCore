@@ -7,7 +7,7 @@
     <div class="details-grid">
 
         <div class="details-card">
-            <div class="details-card-title">Overview</div>
+            <div class="details-card-title">Transaction Overview</div>
 
             <div class="details-item">
                 <span>Status</span>
@@ -25,7 +25,7 @@
             </div>
 
             <div class="details-item">
-                <span>Time</span>
+                <span>UTC</span>
                 <strong>{{time}}</strong>
             </div>
 
@@ -91,91 +91,76 @@
     </div>
 
 
-    <div class="section-title">
-        <h3>Request URL</h3>
-
-        <div class="code-badges">
-            <span class="code-badge payload-url">
-                URL
-            </span>
+    <section class="payload-group request-group">
+        <div class="payload-group-title">
+            <h3>Request</h3>
         </div>
-    </div>
-    <div class="code-block">
-        <button class="copy-btn" onclick="copyText(this)">Copy</button>
-        <pre>{{requestUrl}}</pre>
-    </div>
 
-    <div class="section-title">
-        <h3>Request Headers</h3>
-
-        <div class="code-badges">
-            <span class="code-badge payload-text">
-                HEADERS
-            </span>
+        <div class="section-title">
+            <h4>URL</h4>
         </div>
-    </div>
-
-    <div class="code-block">
-        <button class="copy-btn" onclick="copyText(this)">Copy</button>
-        <pre>{{requestHeaders}}</pre>
-    </div>
-
-    <div class="section-title">
-        <h3>Request Body</h3>
-
-        <div class="code-badges">
-            <span class="code-badge {{requestTypeClass}}">
-                {{requestType}}
-            </span>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyText(this)">Copy</button>
+            <pre>{{requestUrl}}</pre>
         </div>
-    </div>
-    <div class="code-block">
-        <button class="copy-btn" onclick="copyText(this)">Copy</button>
-        <pre>{{request}}</pre>
-    </div>
 
-    <div class="section-title">
-        <h3>Response Headers</h3>
-
-        <div class="code-badges">
-            <span class="code-badge payload-text">
-                HEADERS
-            </span>
+        <div class="section-title">
+            <h4>Headers</h4>
         </div>
-    </div>
 
-    <div class="code-block">
-        <button class="copy-btn" onclick="copyText(this)">Copy</button>
-        <pre>{{responseHeaders}}</pre>
-    </div>
-
-    <div class="section-title">
-        <h3>Response Body</h3>
-
-        <div class="code-badges">
-            <span class="code-badge {{responseTypeClass}}">
-                {{responseType}}
-            </span>
-
-            <span class="code-badge status {{statusClass}}">
-                {{responseStatusCode}}
-            </span>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyText(this)">Copy</button>
+            <pre>{{requestHeaders}}</pre>
         </div>
-    </div>
-    <div class="code-block">
-        <button class="copy-btn" onclick="copyText(this)">Copy</button>
-        <pre>{{response}}</pre>
-    </div>
 
-    <h3>Compare</h3>
+        <div class="section-title">
+            <h4>Body</h4>
+        </div>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyText(this)">Copy</button>
+            <pre>{{request}}</pre>
+        </div>
+    </section>
 
-    <div style="padding-bottom:14px;">
-        <input id="baseUrl" placeholder="http://server:port" />
-        <input id="compareId" placeholder="trace id" />
-        <button onclick="runCompare()">Compare</button>
-    </div>
+    <section class="payload-group response-group {{responseGroupClass}}">
+        <div class="payload-group-title">
+            <h3>Response</h3>
+        </div>
 
-    <div id="compareResult"></div>
+        <div class="section-title">
+            <h4>Headers</h4>
+        </div>
+
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyText(this)">Copy</button>
+            <pre>{{responseHeaders}}</pre>
+        </div>
+
+        <div class="section-title">
+            <h4>Body</h4>
+        </div>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyText(this)">Copy</button>
+            <pre>{{response}}</pre>
+        </div>
+    </section>
+
+    <section class="payload-group compare-group">
+        <div class="payload-group-title">
+            <h3>Compare</h3>
+            <p class="compare-description">
+                Compare this trace with another environment/server.
+            </p>
+        </div>
+
+        <div class="compare-controls">
+            <input id="baseUrl" placeholder="http://server:port" />
+            <input id="compareId" placeholder="trace id" />
+            <button onclick="runCompare()">Compare</button>
+        </div>
+
+        <div id="compareResult"></div>
+    </section>
 
 </div>
 
