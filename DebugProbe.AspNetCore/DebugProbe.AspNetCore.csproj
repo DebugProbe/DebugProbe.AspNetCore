@@ -4,17 +4,18 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<LangVersion>latest</LangVersion>
+
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 
 		<PackageId>DebugProbe.AspNetCore</PackageId>
-		<Version>1.4.1-preview.1</Version>
+		<Version>1.4.1-preview.2</Version>
 
 		<Authors>Georgi Hristov</Authors>
 
-		<Description>Debug HTTP requests and responses directly inside ASP.NET Core applications with a built-in tracing and comparison UI.</Description>
+		<Description>Inspect and debug HTTP requests and responses directly inside ASP.NET Core applications.</Description>
 
-		<PackageTags>aspnetcore;debugging;http;middleware;api;diagnostics;tracing;observability</PackageTags>
-
+		<PackageTags>aspnetcore;debugging;http;middleware;diagnostics;tracing;observability;api-debugging;developer-tools</PackageTags>
+		
 		<PackageIcon>icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 
