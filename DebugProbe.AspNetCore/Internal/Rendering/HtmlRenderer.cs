@@ -71,51 +71,49 @@ internal static class HtmlRenderer
 
     public static string RenderDetailsPage(DebugEntry x, DebugEnvironment e, string req, string res)
     {
-        var requestHeaders = string.Join(Environment.NewLine, x.RequestHeaders.Select(h => $"{h.Key}: {h.Value}"));
-        var responseHeaders = string.Join(Environment.NewLine, x.ResponseHeaders.Select(h => $"{h.Key}: {h.Value}"));
-
         var pathWithQuery = string.IsNullOrEmpty(x.Query) ? x.Path : $"{x.Path}{x.Query}";
 
         var statusClass = GetStatusClass(x.StatusCode);
 
-        var outgoingRequests = string.Join("", x.OutgoingRequests.Select(r => $@"
-            <div class=""outgoing-request-item"">
-                <div class=""outgoing-request-header"">
-                    <div class=""outgoing-request-main"">
-                        <span class=""method-pill"">
-                            {Encode(r.Method)}
-                        </span>
-                        <span class=""outgoing-url"">
-                            {Encode(r.Url)}
-                        </span>
-                    </div>
-                    <div class=""outgoing-request-side"">
-                        <span class=""status {GetStatusClass(r.StatusCode ?? 0)}"">
-                            {(r.StatusCode.HasValue ? GetStatusText(r.StatusCode.Value) : "Failed")}
-                        </span>
-                        <span class=""outgoing-duration"">
-                            {r.DurationMs} ms
-                        </span>
-                    </div>
-                </div>
-            </div>
-        "));
+        var incomingRequest = BuildTraceCard(
+            "Incoming Request",
+            x.Method,
+            string.IsNullOrWhiteSpace(x.RequestUrl) ? pathWithQuery : x.RequestUrl,
+            "request",
+            statusCode: x.StatusCode,
+            durationMs: x.DurationMs,
+            details:
+            [
+                BuildPayloadSection("URL", string.IsNullOrWhiteSpace(x.RequestUrl) ? pathWithQuery : x.RequestUrl, "url"),
+                BuildHeaderSection("Headers", x.RequestHeaders),
+                BuildPayloadSection("Body", req, "body")
+            ]);
+
+        var incomingResponse = BuildTraceCard(
+            "Final Response",
+            "",
+            "",
+            x.StatusCode >= 400 ? "response error" : "response",
+            [
+                BuildHeaderSection("Headers", x.ResponseHeaders),
+                BuildPayloadSection("Body", res, "body")
+            ]);
+
+        var outgoingRequests = string.Join("", x.OutgoingRequests.Select(BuildOutgoingRequestCard));
 
         var content = EmbeddedResources.Details
             .Replace("{{method}}", Encode(x.Method))
             .Replace("{{path}}", Encode(pathWithQuery))
             .Replace("{{status}}", GetStatusText(x.StatusCode))
             .Replace("{{statusClass}}", statusClass)
-            .Replace("{{responseGroupClass}}", GetResponseGroupClass(x.StatusCode))
-            .Replace("{{responseStatusCode}}", x.StatusCode.ToString())
             .Replace("{{traceId}}", x.Id.ToString())
 
             .Replace("{{time}}", x.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff"))
             .Replace("{{local}}", x.Timestamp.ToLocalTime().ToString("HH:mm:ss"))
 
             .Replace("{{durationMs}}", x.DurationMs.ToString())
-            .Replace("{{requestSize}}", x.RequestSize.ToString())
-            .Replace("{{responseSize}}", x.ResponseSize.ToString())
+            .Replace("{{completed}}", x.Timestamp.AddMilliseconds(x.DurationMs).ToLocalTime().ToString("HH:mm:ss"))
+            .Replace("{{dependencyCount}}", x.OutgoingRequests.Count.ToString())
 
             .Replace("{{env}}", Encode(e.Environment))
             .Replace("{{culture}}", Encode(e.Culture))
@@ -125,22 +123,159 @@ internal static class HtmlRenderer
             .Replace("{{decimalSeparator}}", Encode(e.DecimalSeparator))
             .Replace("{{dateFormat}}", e.DateFormat ?? "")
             .Replace("{{assemblyVersion}}", Encode(e.AssemblyVersion))
-
             .Replace("{{outgoingRequests}}",
                 string.IsNullOrWhiteSpace(outgoingRequests)
-                    ? "<div class='empty-state'>No outgoing requests</div>"
+                    ? "<div class='empty-state trace-empty'>No outgoing dependency calls</div>"
                     : outgoingRequests)
-
-            .Replace("{{requestUrl}}", Encode(string.IsNullOrEmpty(x.RequestUrl) ? "" : x.RequestUrl))
-            .Replace("{{requestHeaders}}", Encode(requestHeaders))
-            .Replace("{{request}}", Encode(string.IsNullOrEmpty(req) ? "" : req))
-
-            .Replace("{{responseHeaders}}", Encode(responseHeaders))
-            .Replace("{{response}}", Encode(string.IsNullOrEmpty(res) ? "" : res)
-
-            );
+            .Replace("{{incomingRequest}}", incomingRequest)
+            .Replace("{{incomingResponse}}", incomingResponse);
 
         return BuildLayout(content);
+    }
+
+    private static string BuildOutgoingRequestCard(DebugOutgoingRequest request)
+    {
+        var classes = request.StatusCode >= 400 || !string.IsNullOrWhiteSpace(request.Exception)
+            ? "dependency error"
+            : "dependency";
+
+        var details = new List<string>
+        {
+            BuildHeaderSection("Request Headers", request.RequestHeaders),
+            BuildPayloadSection("Request Body", request.RequestBody, "body"),
+            BuildHeaderSection("Response Headers", request.ResponseHeaders),
+            BuildPayloadSection("Response Body", request.ResponseBody, "body")
+        };
+
+        if (!string.IsNullOrWhiteSpace(request.Exception))
+        {
+            details.Add(BuildPayloadSection("Exception", request.Exception, "exception", open: true));
+        }
+
+        return BuildTraceCard(
+            "HttpClient",
+            request.Method,
+            request.Url,
+            classes,
+            statusCode: request.StatusCode,
+            statusText: request.StatusCode.HasValue ? null : "Failed",
+            durationMs: request.DurationMs,
+            details: details);
+    }
+
+    private static string BuildTraceCard(
+        string label,
+        string method,
+        string target,
+        string classes,
+        IEnumerable<string> details,
+        int? statusCode = null,
+        string? statusText = null,
+        long? durationMs = null)
+    {
+        var targetHost = GetDisplayTarget(target);
+        var status = statusCode.HasValue
+            ? $@"<span class=""status {GetStatusClass(statusCode.Value)}"">{Encode(GetStatusText(statusCode.Value))}</span>"
+            : !string.IsNullOrWhiteSpace(statusText)
+                ? $@"<span class=""status status-500"">{Encode(statusText)}</span>"
+            : "";
+        var duration = durationMs.HasValue
+            ? $@"<span>{durationMs.Value} ms</span>"
+            : "";
+
+        var methodPill = !string.IsNullOrWhiteSpace(method) 
+            ? $@"<span class=""method-pill"">{Encode(method)}</span>"
+            : "";
+
+        return $@"
+        <article class=""trace-card {Encode(classes)}"">
+            <div class=""trace-card-main"">
+                <div class=""trace-card-header"">
+                    <div class=""trace-card-title"">
+                        <span class=""trace-dot"" aria-hidden=""true""></span>
+                        <span class=""trace-label"">{Encode(label)}</span>
+                         {methodPill}
+                        <strong title=""{Encode(target)}"">{Encode(targetHost)}</strong>
+                    </div>
+                    <div class=""trace-card-meta"">
+                        {status}
+                        {duration}
+                    </div>
+                </div>
+                <div class=""trace-details"">
+                    {string.Join("", details)}
+                </div>
+            </div>
+        </article>";
+    }
+
+    private static string BuildHeaderSection(string title, IReadOnlyDictionary<string, string> headers)
+    {
+        if (headers.Count == 0)
+        {
+            return BuildEmptySection(title, "No headers captured");
+        }
+
+        var rows = string.Join("", headers.Select(header => $@"
+            <div class=""header-row"">
+                <span>{Encode(header.Key)}</span>
+                <code>{Encode(header.Value)}</code>
+            </div>"));
+
+        return $@"
+        <details class=""payload-panel"">
+            <summary>
+                <span>{Encode(title)}</span>
+                <small>{headers.Count} headers</small>
+            </summary>
+            <div class=""headers-grid"">
+                {rows}
+            </div>
+        </details>";
+    }
+
+    private static string BuildPayloadSection(string title, string? value, string kind, bool open = false)
+    {
+        var text = string.IsNullOrWhiteSpace(value) ? "" : JsonUtils.Format(value);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return BuildEmptySection(title, "Empty");
+        }
+
+        return $@"
+        <details class=""payload-panel""{(open ? " open" : "")}>
+            <summary>
+                <span>{Encode(title)}</span>
+                <small>{Encode(kind)} - {FormatBytes(text.Length)}</small>
+            </summary>
+            <div class=""code-block"">
+                <button class=""copy-btn"" type=""button"" onclick=""copyText(this)"">Copy</button>
+                <pre>{Encode(text)}</pre>
+            </div>
+        </details>";
+    }
+
+    private static string BuildEmptySection(string title, string message)
+    {
+        return $@"
+        <details class=""payload-panel payload-panel-empty"">
+            <summary>
+                <span>{Encode(title)}</span>
+                <small>{Encode(message)}</small>
+            </summary>
+        </details>";
+    }
+
+    private static string GetDisplayTarget(string value)
+    {
+        if (Uri.TryCreate(value, UriKind.Absolute, out var uri))
+        {
+            return string.IsNullOrWhiteSpace(uri.PathAndQuery)
+                ? uri.Host
+                : $"{uri.Host}{uri.PathAndQuery}";
+        }
+
+        return value;
     }
 
     private static string Encode(string? value)
@@ -165,11 +300,6 @@ internal static class HtmlRenderer
         };
     }
 
-    private static string GetResponseGroupClass(int statusCode)
-    {
-        return statusCode >= 400 ? "response-error" : "";
-    }
-
     private static string FormatCompactNumber(int value)
     {
         return value switch
@@ -177,6 +307,16 @@ internal static class HtmlRenderer
             >= 1_000_000 => $"{value / 1_000_000d:0.#}M",
             >= 1_000 => $"{value / 1_000d:0.#}K",
             _ => value.ToString()
+        };
+    }
+
+    private static string FormatBytes(int value)
+    {
+        return value switch
+        {
+            >= 1_048_576 => $"{value / 1_048_576d:0.#} MB",
+            >= 1024 => $"{value / 1024d:0.#} KB",
+            _ => $"{value} B"
         };
     }
 
