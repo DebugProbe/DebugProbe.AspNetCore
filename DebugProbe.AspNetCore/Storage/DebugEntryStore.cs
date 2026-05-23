@@ -2,7 +2,6 @@
 using System.Globalization;
 using System.Reflection;
 using DebugProbe.AspNetCore.Internal.Utils;
-using DebugProbe.AspNetCore.Middleware;
 using DebugProbe.AspNetCore.Models;
 using DebugProbe.AspNetCore.Options;
 
@@ -20,7 +19,6 @@ public class DebugEntryStore
 
     private readonly ConcurrentQueue<DebugEntry> _queue = new();
     private readonly int _limit;
-
 
     public DebugEntryStore(DebugProbeOptions options)
     {

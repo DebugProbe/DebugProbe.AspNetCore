@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Json;
+using DebugProbe.AspNetCore.Handlers;
 using DebugProbe.AspNetCore.Internal.Compare;
 using DebugProbe.AspNetCore.Internal.Rendering;
 using DebugProbe.AspNetCore.Internal.Resources;
@@ -10,6 +11,7 @@ using DebugProbe.AspNetCore.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http;
 
 namespace DebugProbe.AspNetCore.Extensions;
 
@@ -29,10 +31,26 @@ public static class DebugProbeExtensions
     public static IServiceCollection AddDebugProbe(this IServiceCollection services, Action<DebugProbeOptions>? configure = null)
     {
         var options = new DebugProbeOptions();
+
         configure?.Invoke(options);
 
         services.AddSingleton(options);
+
         services.AddSingleton<DebugEntryStore>();
+
+        services.AddHttpContextAccessor();
+
+        services.AddHttpClient();
+
+        services.AddTransient<DebugProbeHttpClientHandler>();
+
+        services.ConfigureAll<HttpClientFactoryOptions>(options =>
+        {
+            options.HttpMessageHandlerBuilderActions.Add(builder =>
+            {
+                builder.AdditionalHandlers.Add(builder.Services.GetRequiredService<DebugProbeHttpClientHandler>());
+            });
+        });
 
         return services;
     }
@@ -54,9 +72,10 @@ public static class DebugProbeExtensions
                     .ToList();
 
                 var html = HtmlRenderer.RenderIndexPage(items);
-
                 ctx.Response.ContentType = "text/html";
+
                 await ctx.Response.WriteAsync(html);
+
             }).ExcludeFromDescription();
 
             webApp.MapGet("/debug/{id}", async (HttpContext ctx, string id, DebugEntryStore store) =>
@@ -74,9 +93,10 @@ public static class DebugProbeExtensions
                 var prettyResponse = JsonUtils.Format(item.ResponseBody);
 
                 var html = HtmlRenderer.RenderDetailsPage(item, store.Environment, prettyRequest, prettyResponse);
-
                 ctx.Response.ContentType = "text/html";
+
                 await ctx.Response.WriteAsync(html);
+
             }).ExcludeFromDescription();
 
             webApp.MapGet("/debug/compare/{id}", async (string id, string baseUrl, string remoteTraceId,
@@ -85,6 +105,7 @@ public static class DebugProbeExtensions
             {
                 var localEnvironment = store.Environment;
                 var localEntry = store.Get(id);
+
                 if (localEntry is null)
                 {
                     return Results.NotFound("Local trace not found");
@@ -102,11 +123,9 @@ public static class DebugProbeExtensions
                     return Results.BadRequest(validation.Error);
                 }
 
-                var remoteEnvironmentUrl =
-                    new Uri(validation.BaseUri!, "/debug/environment");
+                var remoteEnvironmentUrl = new Uri(validation.BaseUri!, "/debug/environment");
 
-                var remoteEntryUrl =
-                    new Uri(validation.BaseUri!, $"/debug/json/{remoteTraceId}");
+                var remoteEntryUrl = new Uri(validation.BaseUri!, $"/debug/json/{remoteTraceId}");
 
                 DebugEntry? remoteEntry;
                 DebugEnvironment? remoteEnvironment;
@@ -131,7 +150,6 @@ public static class DebugProbeExtensions
                 {
                     return Results.BadRequest("Failed to reach remote server");
                 }
-
                
                 var diff = DebugEntryComparer.Compare(localEntry, remoteEntry);
 
@@ -151,20 +169,23 @@ public static class DebugProbeExtensions
                     culture = new { local = localEnvironment.Culture, remote = remoteEnvironment?.Culture ?? "" },
                     requestBody = new { local = localEntry.RequestBody ?? "", remote = remoteEntry.RequestBody ?? "" },
                     responseBody = new { local = localEntry.ResponseBody ?? "", remote = remoteEntry.ResponseBody ?? "" },
-
                     diffs = diff
                 });
+
             }).ExcludeFromDescription();
 
             webApp.MapGet("/debug/environment", (DebugEntryStore store) =>
             {
                 return Results.Ok(store.Environment);
+
             }).ExcludeFromDescription();
 
             webApp.MapGet("/debug/json/{id}", (string id, DebugEntryStore store) =>
             {
                 var item = store.Get(id);
+
                 return item is null ? Results.NotFound() : Results.Json(item);
+
             }).ExcludeFromDescription();
 
 
@@ -176,12 +197,15 @@ public static class DebugProbeExtensions
                 }
 
                 return Results.Text(content, "application/javascript");
+
             }).ExcludeFromDescription();
 
             webApp.MapPost("/debug/clear", (DebugEntryStore store) =>
             {
                 store.Clear();
+
                 return Results.Ok();
+
             }).ExcludeFromDescription();
 
             webApp.Map("/debug/logo.png", ctx =>

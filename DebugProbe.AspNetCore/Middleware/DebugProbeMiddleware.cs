@@ -16,6 +16,7 @@ public class DebugProbeMiddleware
 {
     private const string BodyTooLargeMessage = "[Body too large]";
     private const string BinaryBodyMessage = "[Body not captured: non-text content]";
+
     private static readonly string[] DefaultIgnorePaths =
     [
         "/debug",
@@ -77,8 +78,19 @@ public class DebugProbeMiddleware
         var requestBody = await CaptureRequestBodyAsync(context, maxBodySize);
 
         var originalBody = context.Response.Body;
-        await using var responseCapture = new BoundedResponseCaptureStream(originalBody, maxBodySize + 1);
+
+        await using var responseCapture =
+            new BoundedResponseCaptureStream(originalBody, maxBodySize + 1);
+
         context.Response.Body = responseCapture;
+
+        var entry = new DebugEntry
+        {
+            Id = Guid.NewGuid().ToString(),
+            Timestamp = DateTime.UtcNow
+        };
+
+        context.Items["DebugProbeEntry"] = entry;
 
         var started = Stopwatch.StartNew();
 
@@ -98,49 +110,50 @@ public class DebugProbeMiddleware
         finally
         {
             started.Stop();
-            var durationMs = started.ElapsedTicks > 0
-                ? Math.Max(1, started.ElapsedMilliseconds)
-                : 0;
+
+            var durationMs = started.ElapsedTicks > 0 ? Math.Max(1, started.ElapsedMilliseconds) : 0;
 
             context.Response.Body = originalBody;
 
             var statusCode = exception && context.Response.StatusCode == 200 ? 500 : context.Response.StatusCode;
+
             var responseBody = exception ? Trim(exceptionResponseBody, maxBodySize) : CaptureResponseBody(context, responseCapture, maxBodySize);
 
-            store.Add(new DebugEntry
-            {
-                Id = Guid.NewGuid().ToString(),
+            entry.Method = context.Request.Method;
 
-                // Overview
-                Method = context.Request.Method,
-                Path = context.Request.Path,
-                Query = context.Request.QueryString.ToString(),
-                StatusCode = statusCode,
-                RequestTimeUtc = DateTime.UtcNow,
-                DurationMs = durationMs,
-                RequestSize = context.Request.ContentLength ?? Encoding.UTF8.GetByteCount(requestBody),
-                ResponseSize = Encoding.UTF8.GetByteCount(responseBody),
+            entry.Path = context.Request.Path;
 
+            entry.Query = context.Request.QueryString.ToString();
 
-                // Request Headers
-                RequestHeaders = context.Request.Headers.ToDictionary(x => x.Key, x => 
-                SensitiveHeaders.Contains(x.Key) ? "[REDACTED]" : x.Value.ToString()),
+            entry.StatusCode = statusCode;
 
-                // Request
-                RequestUrl = $"{context.Request.Scheme}://{context.Request.Host}" + 
-                        $"{context.Request.Path}{context.Request.QueryString}",
-                RequestBody = Trim(requestBody, maxBodySize),
+            entry.RequestTimeUtc = DateTime.UtcNow;
 
-                // Response
-                ResponseBody = Trim(responseBody, maxBodySize),
+            entry.DurationMs = durationMs;
 
-                // Response Headers
-                ResponseHeaders = context.Response.Headers.ToDictionary(x => x.Key, x => 
-                SensitiveHeaders.Contains(x.Key)? "[REDACTED]" : x.Value.ToString()),
+            entry.RequestSize = context.Request.ContentLength ?? Encoding.UTF8.GetByteCount(requestBody);
 
-                // Other
-                Timestamp = DateTime.UtcNow,
-            });
+            entry.ResponseSize = Encoding.UTF8.GetByteCount(responseBody);
+
+            entry.RequestHeaders =
+                context.Request.Headers.ToDictionary(
+                    x => x.Key,
+                    x => SensitiveHeaders.Contains(x.Key) ? "[REDACTED]" : x.Value.ToString());
+
+            entry.RequestUrl =
+                $"{context.Request.Scheme}://{context.Request.Host}" +
+                $"{context.Request.Path}{context.Request.QueryString}";
+
+            entry.RequestBody = Trim(requestBody, maxBodySize);
+
+            entry.ResponseBody = Trim(responseBody, maxBodySize);
+
+            entry.ResponseHeaders = 
+                context.Response.Headers.ToDictionary(
+                    x => x.Key,
+                    x => SensitiveHeaders.Contains(x.Key) ? "[REDACTED]" : x.Value.ToString());
+
+            store.Add(entry);
         }
     }
 
@@ -169,12 +182,12 @@ public class DebugProbeMiddleware
         }
 
         context.Request.Body.Position = 0;
+
         var bytes = await ReadAtMostAsync(context.Request.Body, maxBodySize + 1);
+
         context.Request.Body.Position = 0;
 
-        return bytes.Length > maxBodySize
-            ? BodyTooLargeMessage
-            : Encoding.UTF8.GetString(bytes);
+        return bytes.Length > maxBodySize ? BodyTooLargeMessage : Encoding.UTF8.GetString(bytes);
     }
 
     private static string CaptureResponseBody(HttpContext context, BoundedResponseCaptureStream responseCapture, int maxBodySize)
@@ -229,12 +242,15 @@ public class DebugProbeMiddleware
     private static async Task<byte[]> ReadAtMostAsync(Stream stream, int byteLimit)
     {
         using var buffer = new MemoryStream();
+
         var remaining = byteLimit;
+
         var chunk = new byte[Math.Min(81920, byteLimit)];
 
         while (remaining > 0)
         {
-            var read = await stream.ReadAsync(chunk.AsMemory(0, Math.Min(chunk.Length, remaining)));
+            var read = await stream.ReadAsync(
+                chunk.AsMemory(0, Math.Min(chunk.Length, remaining)));
 
             if (read == 0)
             {
@@ -242,6 +258,7 @@ public class DebugProbeMiddleware
             }
 
             await buffer.WriteAsync(chunk.AsMemory(0, read));
+
             remaining -= read;
         }
 
@@ -250,7 +267,13 @@ public class DebugProbeMiddleware
 
     private static string Trim(string? value, int max = 2000)
     {
-        if (string.IsNullOrEmpty(value)) return value ?? string.Empty;
-        return value.Length <= max ? value : value.Substring(0, max);
+        if (string.IsNullOrEmpty(value))
+        {
+            return value ?? string.Empty;
+        }
+
+        return value.Length <= max
+            ? value
+            : value.Substring(0, max);
     }
 }

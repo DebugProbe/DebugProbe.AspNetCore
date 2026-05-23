@@ -201,6 +201,59 @@ h4 {
     }
 
 /* =========================
+   Outgoing Request
+========================= */
+.outgoing-request-item {
+    padding: 14px 0;
+    border-bottom: 1px solid #ececec;
+}
+
+    .outgoing-request-item:last-child {
+        border-bottom: none;
+    }
+
+    .outgoing-request-item:hover {
+        background: #fafafa;
+    }
+
+.outgoing-request-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.outgoing-request-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    flex: 1;
+}
+
+.outgoing-request-side {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.outgoing-url {
+    overflow: hidden;
+    color: #374151;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-family: monospace;
+}
+
+.outgoing-duration {
+    color: #666;
+    font-size: 13px;
+}
+
+
+/* =========================
    Table
 ========================= */
 
@@ -246,7 +299,7 @@ tbody tr:last-child td {
 
 .method-pill {
     display: inline-flex;
-    min-width: 54px;
+    min-width: 60px;
     justify-content: center;
     padding: 4px 8px;
     background: #f3f4f6;
@@ -274,6 +327,10 @@ tbody tr:last-child td {
     border: 1px solid #e8e8e8;
     border-left-width: 5px;
     border-radius: 8px;
+}
+
+.outgoing-request-group {
+    border-left-color: #9b51e0;
 }
 
 .request-group {

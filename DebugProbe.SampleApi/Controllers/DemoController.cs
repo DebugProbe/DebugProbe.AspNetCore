@@ -7,11 +7,30 @@ namespace DebugProbe.SampleApi.Controllers
     [Route("[controller]")]
     public class DemoController : ControllerBase
     {
+        private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<DemoController> _logger;
 
-        public DemoController(ILogger<DemoController> logger)
+        public DemoController(ILogger<DemoController> logger, IHttpClientFactory httpClientFactory)
         {
             _logger = logger;
+            _httpClientFactory = httpClientFactory;
+        }
+
+        [HttpGet("CallExternalApi")]
+        public async Task<IActionResult> CallExternalApi()
+        {
+            var client = _httpClientFactory.CreateClient();
+
+            var response = await client.GetAsync(
+                "https://jsonplaceholder.typicode.com/posts/1");
+
+            var content = await response.Content.ReadAsStringAsync();
+
+            return Ok(new
+            {
+                success = response.IsSuccessStatusCode,
+                data = content
+            });
         }
 
         [HttpGet("GetUsers/{count}")]

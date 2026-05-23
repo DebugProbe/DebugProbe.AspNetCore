@@ -71,17 +71,35 @@ internal static class HtmlRenderer
 
     public static string RenderDetailsPage(DebugEntry x, DebugEnvironment e, string req, string res)
     {
-        //var headers = string.Join("", x.Reqe.Select(h =>
-        //    $"<tr><td>{Encode(h.Key)}</td><td>{Encode(h.Value)}</td></tr>"));
-
         var requestHeaders = string.Join(Environment.NewLine, x.RequestHeaders.Select(h => $"{h.Key}: {h.Value}"));
         var responseHeaders = string.Join(Environment.NewLine, x.ResponseHeaders.Select(h => $"{h.Key}: {h.Value}"));
 
-        var pathWithQuery = string.IsNullOrEmpty(x.Query)
-            ? x.Path
-            : $"{x.Path}{x.Query}";
+        var pathWithQuery = string.IsNullOrEmpty(x.Query) ? x.Path : $"{x.Path}{x.Query}";
 
         var statusClass = GetStatusClass(x.StatusCode);
+
+        var outgoingRequests = string.Join("", x.OutgoingRequests.Select(r => $@"
+            <div class=""outgoing-request-item"">
+                <div class=""outgoing-request-header"">
+                    <div class=""outgoing-request-main"">
+                        <span class=""method-pill"">
+                            {Encode(r.Method)}
+                        </span>
+                        <span class=""outgoing-url"">
+                            {Encode(r.Url)}
+                        </span>
+                    </div>
+                    <div class=""outgoing-request-side"">
+                        <span class=""status {GetStatusClass(r.StatusCode ?? 0)}"">
+                            {(r.StatusCode.HasValue ? GetStatusText(r.StatusCode.Value) : "Failed")}
+                        </span>
+                        <span class=""outgoing-duration"">
+                            {r.DurationMs} ms
+                        </span>
+                    </div>
+                </div>
+            </div>
+        "));
 
         var content = EmbeddedResources.Details
             .Replace("{{method}}", Encode(x.Method))
@@ -108,14 +126,19 @@ internal static class HtmlRenderer
             .Replace("{{dateFormat}}", e.DateFormat ?? "")
             .Replace("{{assemblyVersion}}", Encode(e.AssemblyVersion))
 
+            .Replace("{{outgoingRequests}}",
+                string.IsNullOrWhiteSpace(outgoingRequests)
+                    ? "<div class='empty-state'>No outgoing requests</div>"
+                    : outgoingRequests)
+
             .Replace("{{requestUrl}}", Encode(string.IsNullOrEmpty(x.RequestUrl) ? "" : x.RequestUrl))
             .Replace("{{requestHeaders}}", Encode(requestHeaders))
             .Replace("{{request}}", Encode(string.IsNullOrEmpty(req) ? "" : req))
 
             .Replace("{{responseHeaders}}", Encode(responseHeaders))
-            .Replace("{{response}}", Encode(string.IsNullOrEmpty(res) ? "" : res));
+            .Replace("{{response}}", Encode(string.IsNullOrEmpty(res) ? "" : res)
 
-            //.Replace("{{headers}}", headers);
+            );
 
         return BuildLayout(content);
     }
