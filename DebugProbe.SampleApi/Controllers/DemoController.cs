@@ -7,11 +7,77 @@ namespace DebugProbe.SampleApi.Controllers
     [Route("[controller]")]
     public class DemoController : ControllerBase
     {
+        private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<DemoController> _logger;
 
-        public DemoController(ILogger<DemoController> logger)
+        public DemoController(ILogger<DemoController> logger, IHttpClientFactory httpClientFactory)
         {
             _logger = logger;
+            _httpClientFactory = httpClientFactory;
+        }
+
+        [HttpPost("ExecuteExternalRequests")]
+        public async Task<IActionResult> ExecuteExternalRequests()
+        {
+            var client = _httpClientFactory.CreateClient();
+
+            var createPostResponse = await client.PostAsJsonAsync(
+                "https://jsonplaceholder.typicode.com/posts",
+                new
+                {
+                    title = "DebugProbe",
+                    body = "Tracing test",
+                    userId = 1
+                });
+
+            var createPostContent = await createPostResponse.Content.ReadAsStringAsync();
+
+            var usersResponse = await client.GetAsync(
+                "https://jsonplaceholder.typicode.com/users");
+
+            var usersContent = await usersResponse.Content.ReadAsStringAsync();
+
+            return Ok(new
+            {
+                Post = createPostContent,
+                Users = usersContent
+            });
+        }
+
+        [HttpPost("CallExternalPost")]
+        public async Task<IActionResult> CallExternalPost()
+        {
+            var client = _httpClientFactory.CreateClient();
+
+            var response = await client.PostAsJsonAsync(
+                "https://jsonplaceholder.typicode.com/posts",
+                new
+                {
+                    title = "DebugProbe",
+                    body = "Tracing test",
+                    userId = 1
+                });
+
+            var content = await response.Content.ReadAsStringAsync();
+
+            return Ok(content);
+        }
+
+        [HttpGet("CallExternalGet")]
+        public async Task<IActionResult> CallExternalGet()
+        {
+            var client = _httpClientFactory.CreateClient();
+
+            var response = await client.GetAsync(
+                "https://jsonplaceholder.typicode.com/posts/1");
+
+            var content = await response.Content.ReadAsStringAsync();
+
+            return Ok(new
+            {
+                success = response.IsSuccessStatusCode,
+                data = content
+            });
         }
 
         [HttpGet("GetUsers/{count}")]

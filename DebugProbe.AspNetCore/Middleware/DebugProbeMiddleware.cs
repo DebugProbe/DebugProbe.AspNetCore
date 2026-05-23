@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using DebugProbe.AspNetCore.Internal.Streams;
+using DebugProbe.AspNetCore.Internal.Utils;
 using DebugProbe.AspNetCore.Models;
 using DebugProbe.AspNetCore.Options;
 using DebugProbe.AspNetCore.Storage;
@@ -16,6 +17,7 @@ public class DebugProbeMiddleware
 {
     private const string BodyTooLargeMessage = "[Body too large]";
     private const string BinaryBodyMessage = "[Body not captured: non-text content]";
+
     private static readonly string[] DefaultIgnorePaths =
     [
         "/debug",
@@ -77,8 +79,19 @@ public class DebugProbeMiddleware
         var requestBody = await CaptureRequestBodyAsync(context, maxBodySize);
 
         var originalBody = context.Response.Body;
-        await using var responseCapture = new BoundedResponseCaptureStream(originalBody, maxBodySize + 1);
+
+        await using var responseCapture =
+            new BoundedResponseCaptureStream(originalBody, maxBodySize + 1);
+
         context.Response.Body = responseCapture;
+
+        var entry = new DebugEntry
+        {
+            Id = Guid.NewGuid().ToString(),
+            Timestamp = DateTime.UtcNow
+        };
+
+        context.Items["DebugProbeEntry"] = entry;
 
         var started = Stopwatch.StartNew();
 
@@ -98,49 +111,50 @@ public class DebugProbeMiddleware
         finally
         {
             started.Stop();
-            var durationMs = started.ElapsedTicks > 0
-                ? Math.Max(1, started.ElapsedMilliseconds)
-                : 0;
+
+            var durationMs = started.ElapsedTicks > 0 ? Math.Max(1, started.ElapsedMilliseconds) : 0;
 
             context.Response.Body = originalBody;
 
             var statusCode = exception && context.Response.StatusCode == 200 ? 500 : context.Response.StatusCode;
-            var responseBody = exception ? Trim(exceptionResponseBody, maxBodySize) : CaptureResponseBody(context, responseCapture, maxBodySize);
 
-            store.Add(new DebugEntry
-            {
-                Id = Guid.NewGuid().ToString(),
+            var responseBody = exception ? HttpContentUtils.Trim(exceptionResponseBody, maxBodySize) : CaptureResponseBody(context, responseCapture, maxBodySize);
 
-                // Overview
-                Method = context.Request.Method,
-                Path = context.Request.Path,
-                Query = context.Request.QueryString.ToString(),
-                StatusCode = statusCode,
-                RequestTimeUtc = DateTime.UtcNow,
-                DurationMs = durationMs,
-                RequestSize = context.Request.ContentLength ?? Encoding.UTF8.GetByteCount(requestBody),
-                ResponseSize = Encoding.UTF8.GetByteCount(responseBody),
+            entry.Method = context.Request.Method;
 
+            entry.Path = context.Request.Path;
 
-                // Request Headers
-                RequestHeaders = context.Request.Headers.ToDictionary(x => x.Key, x => 
-                SensitiveHeaders.Contains(x.Key) ? "[REDACTED]" : x.Value.ToString()),
+            entry.Query = context.Request.QueryString.ToString();
 
-                // Request
-                RequestUrl = $"{context.Request.Scheme}://{context.Request.Host}" + 
-                        $"{context.Request.Path}{context.Request.QueryString}",
-                RequestBody = Trim(requestBody, maxBodySize),
+            entry.StatusCode = statusCode;
 
-                // Response
-                ResponseBody = Trim(responseBody, maxBodySize),
+            entry.RequestTimeUtc = DateTime.UtcNow;
 
-                // Response Headers
-                ResponseHeaders = context.Response.Headers.ToDictionary(x => x.Key, x => 
-                SensitiveHeaders.Contains(x.Key)? "[REDACTED]" : x.Value.ToString()),
+            entry.DurationMs = durationMs;
 
-                // Other
-                Timestamp = DateTime.UtcNow,
-            });
+            entry.RequestSize = context.Request.ContentLength ?? Encoding.UTF8.GetByteCount(requestBody);
+
+            entry.ResponseSize = Encoding.UTF8.GetByteCount(responseBody);
+
+            entry.RequestHeaders =
+                context.Request.Headers.ToDictionary(
+                    x => x.Key,
+                    x => SensitiveHeaders.Contains(x.Key) ? "[REDACTED]" : x.Value.ToString());
+
+            entry.RequestUrl =
+                $"{context.Request.Scheme}://{context.Request.Host}" +
+                $"{context.Request.Path}{context.Request.QueryString}";
+
+            entry.RequestBody = HttpContentUtils.Trim(requestBody, maxBodySize);
+
+            entry.ResponseBody = HttpContentUtils.Trim(responseBody, maxBodySize);
+
+            entry.ResponseHeaders = 
+                context.Response.Headers.ToDictionary(
+                    x => x.Key,
+                    x => SensitiveHeaders.Contains(x.Key) ? "[REDACTED]" : x.Value.ToString());
+
+            store.Add(entry);
         }
     }
 
@@ -151,7 +165,7 @@ public class DebugProbeMiddleware
             return string.Empty;
         }
 
-        if (!IsTextContent(context.Request.ContentType))
+        if (!HttpContentUtils.IsTextContent(context.Request.ContentType))
         {
             return BinaryBodyMessage;
         }
@@ -169,17 +183,17 @@ public class DebugProbeMiddleware
         }
 
         context.Request.Body.Position = 0;
+
         var bytes = await ReadAtMostAsync(context.Request.Body, maxBodySize + 1);
+
         context.Request.Body.Position = 0;
 
-        return bytes.Length > maxBodySize
-            ? BodyTooLargeMessage
-            : Encoding.UTF8.GetString(bytes);
+        return bytes.Length > maxBodySize ? BodyTooLargeMessage : Encoding.UTF8.GetString(bytes);
     }
 
     private static string CaptureResponseBody(HttpContext context, BoundedResponseCaptureStream responseCapture, int maxBodySize)
     {
-        if (!IsTextContent(context.Response.ContentType))
+        if (!HttpContentUtils.IsTextContent(context.Response.ContentType))
         {
             return responseCapture.TotalBytesWritten == 0
                 ? string.Empty
@@ -211,30 +225,20 @@ public class DebugProbeMiddleware
                string.Equals(request.Method, HttpMethods.Patch, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsTextContent(string? contentType)
-    {
-        if (string.IsNullOrWhiteSpace(contentType))
-        {
-            return false;
-        }
-
-        return contentType.Contains("json", StringComparison.OrdinalIgnoreCase) ||
-               contentType.Contains("xml", StringComparison.OrdinalIgnoreCase) ||
-               contentType.Contains("text", StringComparison.OrdinalIgnoreCase) ||
-               contentType.Contains("javascript", StringComparison.OrdinalIgnoreCase) ||
-               contentType.Contains("html", StringComparison.OrdinalIgnoreCase) ||
-               contentType.Contains("x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase);
-    }
+   
 
     private static async Task<byte[]> ReadAtMostAsync(Stream stream, int byteLimit)
     {
         using var buffer = new MemoryStream();
+
         var remaining = byteLimit;
+
         var chunk = new byte[Math.Min(81920, byteLimit)];
 
         while (remaining > 0)
         {
-            var read = await stream.ReadAsync(chunk.AsMemory(0, Math.Min(chunk.Length, remaining)));
+            var read = await stream.ReadAsync(
+                chunk.AsMemory(0, Math.Min(chunk.Length, remaining)));
 
             if (read == 0)
             {
@@ -242,15 +246,10 @@ public class DebugProbeMiddleware
             }
 
             await buffer.WriteAsync(chunk.AsMemory(0, read));
+
             remaining -= read;
         }
 
         return buffer.ToArray();
-    }
-
-    private static string Trim(string? value, int max = 2000)
-    {
-        if (string.IsNullOrEmpty(value)) return value ?? string.Empty;
-        return value.Length <= max ? value : value.Substring(0, max);
     }
 }

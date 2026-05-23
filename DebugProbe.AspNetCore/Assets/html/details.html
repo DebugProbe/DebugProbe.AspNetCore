@@ -2,22 +2,21 @@
 
     <a href="/debug">&#8592; Back</a>
 
-    <h2>{{method}} {{path}}</h2>
-
     <div class="details-grid">
 
         <div class="details-card">
-            <div class="details-card-title">Transaction Overview</div>
-
-            <div class="details-item">
-                <span>Status</span>
+            <div class="details-card-title details-card-title-split">
+                <div class="details-card-heading">
+                    <span class="method-pill">{{method}}</span>
+                    <strong class="mono-value">{{path}}</strong>
+                </div>
                 <span class="code-badge status {{statusClass}}">
                     {{status}}
                 </span>
             </div>
 
             <div class="details-item">
-                <span>TraceId</span>
+                <span>Trace ID</span>
                 <button class="trace-id-button"
                         onclick="navigator.clipboard.writeText('{{traceId}}')">
                     {{traceId}}
@@ -40,21 +39,19 @@
             </div>
 
             <div class="details-item">
-                <span>Request Size</span>
-                <strong>{{requestSize}} B</strong>
+                <span>Completed</span>
+                <strong>{{completed}}</strong>
             </div>
 
             <div class="details-item">
-                <span>Response Size</span>
-                <strong>{{responseSize}} B</strong>
+                <span>Dependency Calls</span>
+                <strong>{{dependencyCount}}</strong>
             </div>
         </div>
 
         <div class="details-card">
-            <div class="details-card-title">Environment Overview</div>
-
-            <div class="details-item">
-                <span>Environment</span>
+            <div class="details-card-title details-card-title-split">
+                <span>Environment Overview</span>
                 <strong>{{env}}</strong>
             </div>
 
@@ -90,77 +87,36 @@
         </div>
     </div>
 
+    <section class="trace-flow" aria-label="Request trace">
+        {{incomingRequest}}
 
-    <section class="payload-group request-group">
-        <div class="payload-group-title">
-            <h3>Request</h3>
-        </div>
-
-        <div class="section-title">
-            <h4>URL</h4>
-        </div>
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyText(this)">Copy</button>
-            <pre>{{requestUrl}}</pre>
+        <div class="trace-group-label">
+            Outgoing Requests
         </div>
 
-        <div class="section-title">
-            <h4>Headers</h4>
-        </div>
+        {{outgoingRequests}}
 
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyText(this)">Copy</button>
-            <pre>{{requestHeaders}}</pre>
-        </div>
-
-        <div class="section-title">
-            <h4>Body</h4>
-        </div>
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyText(this)">Copy</button>
-            <pre>{{request}}</pre>
-        </div>
+        {{incomingResponse}}
     </section>
 
-    <section class="payload-group response-group {{responseGroupClass}}">
-        <div class="payload-group-title">
-            <h3>Response</h3>
-        </div>
+    <section class="trace-card compare-card" aria-label="Compare trace">
+        <div class="trace-card-main">
+            <div class="trace-card-header">
+                <div class="trace-card-title">
+                    <span class="trace-dot" aria-hidden="true"></span>
+                    <span class="trace-label">Compare Trace</span>
+                    <strong>Remote environment</strong>
+                </div>
+            </div>
 
-        <div class="section-title">
-            <h4>Headers</h4>
-        </div>
+            <div class="compare-controls">
+                <input id="baseUrl" placeholder="http://server:port" />
+                <input id="compareId" placeholder="trace id" />
+                <button onclick="runCompare()">Compare</button>
+            </div>
 
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyText(this)">Copy</button>
-            <pre>{{responseHeaders}}</pre>
-        </div>
-
-        <div class="section-title">
-            <h4>Body</h4>
-        </div>
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyText(this)">Copy</button>
-            <pre>{{response}}</pre>
+            <div id="compareResult"></div>
         </div>
     </section>
-
-    <section class="payload-group compare-group">
-        <div class="payload-group-title">
-            <h3>Compare</h3>
-            <p class="compare-description">
-                Compare this trace with another environment/server.
-            </p>
-        </div>
-
-        <div class="compare-controls">
-            <input id="baseUrl" placeholder="http://server:port" />
-            <input id="compareId" placeholder="trace id" />
-            <button onclick="runCompare()">Compare</button>
-        </div>
-
-        <div id="compareResult"></div>
-    </section>
-
 </div>
 

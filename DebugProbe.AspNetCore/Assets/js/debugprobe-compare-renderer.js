@@ -11,7 +11,7 @@
         return;
     }
 
-    setCompareResult('<b style="color:orange">Comparing...</b>');
+    setCompareResult('<div class="compare-message">Comparing...</div>');
 
     try {
 
@@ -24,7 +24,7 @@
 
             const text = await res.text();
 
-            setCompareResult(`<b style="color:red">${escapeHtml(text || 'Compare failed')}</b>`);
+            setCompareResult(`<div class="compare-message compare-message-error">${escapeHtml(text || 'Compare failed')}</div>`);
 
             return;
         }
@@ -36,7 +36,7 @@
     } catch (error) {
 
         setCompareResult(
-            `<b style="color:red">${escapeHtml(error.message || 'Compare failed')}</b>`
+            `<div class="compare-message compare-message-error">${escapeHtml(error.message || 'Compare failed')}</div>`
         );
     }
 };
@@ -90,15 +90,15 @@ function renderCompare(result) {
 
     const overviewRowsChangedCount = getChangedCount(overviewRows);
 
-    const localRequestBodyJson = result.requestBody?.local || '';
+    const localRequestBodyJson = normalizeJsonPayload(result.requestBody?.local || '');
 
-    const remoteRequestBodyJson = result.requestBody?.remote || '';
+    const remoteRequestBodyJson = normalizeJsonPayload(result.requestBody?.remote || '');
 
     const requestComparison = compareJsonBodies(localRequestBodyJson, remoteRequestBodyJson);
 
-    const localResponseBodyJson = result.responseBody?.local || '';
+    const localResponseBodyJson = normalizeJsonPayload(result.responseBody?.local || '');
 
-    const remoteResponseBodyJson = result.responseBody?.remote || '';
+    const remoteResponseBodyJson = normalizeJsonPayload(result.responseBody?.remote || '');
 
     const responseComparison = compareJsonBodies(localResponseBodyJson, remoteResponseBodyJson);
 
@@ -149,29 +149,24 @@ function renderSectionRows(rows) {
         rows.map(row => {
             const changed = row.local !== row.remote;
 
-            const rowStyle = changed ? ' style="background:rgba(255,200,0,0.12)"' : '';
-
-            const valueStyle = changed ? ' style="color:#e74c3c"' : '';
-
             return `
-                <tr${rowStyle}>
-                    <td>${escapeHtml(row.field)}</td>
-                    <td${valueStyle}>${escapeHtml(row.local ?? '')}</td>
-                    <td${valueStyle}>${escapeHtml(row.remote ?? '')}</td>
-                </tr>
+                <div class="compare-row ${changed ? 'compare-row-changed' : ''}">
+                    <span>${escapeHtml(row.field)}</span>
+                    <code>${escapeHtml(row.local ?? '')}</code>
+                    <code>${escapeHtml(row.remote ?? '')}</code>
+                </div>
             `;
         }).join('');
 
     return `
-        <table>
-            <tr>
-                <th>Field</th>
-                <th>Local</th>
-                <th>Remote</th>
-            </tr>
-
+        <div class="compare-table">
+            <div class="compare-row compare-row-head">
+                <span>Field</span>
+                <span>Local</span>
+                <span>Remote</span>
+            </div>
             ${body}
-        </table>
+        </div>
     `;
 }
 
@@ -179,17 +174,17 @@ function renderSideBySideJson(comparison, localJson, remoteJson ) {
     return `
         <div class="json-compare">
 
-            <div>
+            <div class="compare-pane">
                 <div class="compare-pane-title">
-                    <b>Local</b>
+                    <span>Local</span>
                 </div>
 
                 ${renderAlignedJson(comparison.local,localJson)}
             </div>
 
-            <div>
+            <div class="compare-pane">
                 <div class="compare-pane-title">
-                    <b>Remote</b>
+                    <span>Remote</span>
                 </div>
 
                 ${renderAlignedJson(comparison.remote, remoteJson )}
@@ -201,31 +196,22 @@ function renderSideBySideJson(comparison, localJson, remoteJson ) {
 
 function renderAccordionSection(title, content, expanded = false, changes = 0) {
     return `
-        <div class="accordion-section">
-
-            <div class="accordion-header" onclick="toggleAccordion(this)">
-
-                <div class="accordion-title">
-                    ${escapeHtml(title)}
-                </div>
-
-                <div class="accordion-meta">
-                    <span class="accordion-toggle">
-                        ${expanded ? '-' : '+'}
-                    </span>
-
-                </div>
-            </div>
-
-            <div class="accordion-body ${expanded ? 'open' : ''}">
+        <details class="compare-section payload-panel"${expanded ? ' open' : ''}>
+            <summary>
+                <span>${escapeHtml(title)}</span>
+                <small>${changes > 0 ? `${changes} changes` : 'No changes'}</small>
+            </summary>
+            <div class="compare-section-body">
                 ${content}
             </div>
-
-        </div>
+        </details>
     `;
 }
 
 function renderAlignedJson(lines, originalJson) {
+    if (!originalJson || originalJson.trim() === '') {
+        return '<div class="compare-empty">Empty body</div>';
+    }
 
     const content =
         lines.map(line => {
@@ -249,6 +235,49 @@ function renderAlignedJson(lines, originalJson) {
     `;
 }
 
+function normalizeJsonPayload(value) {
+    if (!value || !value.trim()) {
+        return '';
+    }
+
+    try {
+        return JSON.stringify(expandJsonStrings(JSON.parse(value)), null, 2);
+    } catch {
+        return value;
+    }
+}
+
+function expandJsonStrings(value) {
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+
+        if (
+            (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+            (trimmed.startsWith('[') && trimmed.endsWith(']'))
+        ) {
+            try {
+                return expandJsonStrings(JSON.parse(trimmed));
+            } catch {
+                return value;
+            }
+        }
+
+        return value;
+    }
+
+    if (Array.isArray(value)) {
+        return value.map(expandJsonStrings);
+    }
+
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(
+            Object.entries(value).map(([key, child]) => [key, expandJsonStrings(child)])
+        );
+    }
+
+    return value;
+}
+
 function formatCopyValue(json, lines) {
 
     try {
@@ -259,17 +288,6 @@ function formatCopyValue(json, lines) {
 
         return lines.map(line => line.text).join('\n');
     }
-}
-
-function toggleAccordion(header) {
-
-    const body = header.nextElementSibling;
-
-    const toggle = header.querySelector('.accordion-toggle');
-
-    body.classList.toggle('open');
-
-    toggle.textContent = body.classList.contains('open') ? '-' : '+';
 }
 
 function getChangedCount(rows) {

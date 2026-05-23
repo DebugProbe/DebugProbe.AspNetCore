@@ -41,15 +41,14 @@ public class HtmlRendererTests
         Assert.Contains("/orders?id=10", html);
         Assert.Contains("500 InternalServerError", html);
         Assert.Contains("http://example.test/orders?id=10", html);
-        Assert.Contains("&quot;request&quot;:true", html);
-        Assert.Contains("&quot;response&quot;:true", html);
+        Assert.Contains("&quot;request&quot;: true", html);
+        Assert.Contains("&quot;response&quot;: true", html);
     }
 
     [Fact]
     public void Payload_groups_render_for_json_empty_text_and_hidden_payloads()
     {
         var jsonHtml = HtmlRenderer.RenderDetailsPage(CreateEntry(), CreateEnvironment(), "{\"ok\":true}", "plain");
-        var emptyHtml = HtmlRenderer.RenderDetailsPage(CreateEntry(), CreateEnvironment(), "", "");
         var hiddenHtml = HtmlRenderer.RenderDetailsPage(CreateEntry(), CreateEnvironment(), "[Body too large]", "[Body too large]");
 
         Assert.Contains("Request", jsonHtml);
