@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using DebugProbe.AspNetCore.Internal.Streams;
+using DebugProbe.AspNetCore.Internal.Utils;
 using DebugProbe.AspNetCore.Models;
 using DebugProbe.AspNetCore.Options;
 using DebugProbe.AspNetCore.Storage;
@@ -117,7 +118,7 @@ public class DebugProbeMiddleware
 
             var statusCode = exception && context.Response.StatusCode == 200 ? 500 : context.Response.StatusCode;
 
-            var responseBody = exception ? Trim(exceptionResponseBody, maxBodySize) : CaptureResponseBody(context, responseCapture, maxBodySize);
+            var responseBody = exception ? HttpContentUtils.Trim(exceptionResponseBody, maxBodySize) : CaptureResponseBody(context, responseCapture, maxBodySize);
 
             entry.Method = context.Request.Method;
 
@@ -144,9 +145,9 @@ public class DebugProbeMiddleware
                 $"{context.Request.Scheme}://{context.Request.Host}" +
                 $"{context.Request.Path}{context.Request.QueryString}";
 
-            entry.RequestBody = Trim(requestBody, maxBodySize);
+            entry.RequestBody = HttpContentUtils.Trim(requestBody, maxBodySize);
 
-            entry.ResponseBody = Trim(responseBody, maxBodySize);
+            entry.ResponseBody = HttpContentUtils.Trim(responseBody, maxBodySize);
 
             entry.ResponseHeaders = 
                 context.Response.Headers.ToDictionary(
@@ -164,7 +165,7 @@ public class DebugProbeMiddleware
             return string.Empty;
         }
 
-        if (!IsTextContent(context.Request.ContentType))
+        if (!HttpContentUtils.IsTextContent(context.Request.ContentType))
         {
             return BinaryBodyMessage;
         }
@@ -192,7 +193,7 @@ public class DebugProbeMiddleware
 
     private static string CaptureResponseBody(HttpContext context, BoundedResponseCaptureStream responseCapture, int maxBodySize)
     {
-        if (!IsTextContent(context.Response.ContentType))
+        if (!HttpContentUtils.IsTextContent(context.Response.ContentType))
         {
             return responseCapture.TotalBytesWritten == 0
                 ? string.Empty
@@ -224,20 +225,7 @@ public class DebugProbeMiddleware
                string.Equals(request.Method, HttpMethods.Patch, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsTextContent(string? contentType)
-    {
-        if (string.IsNullOrWhiteSpace(contentType))
-        {
-            return false;
-        }
-
-        return contentType.Contains("json", StringComparison.OrdinalIgnoreCase) ||
-               contentType.Contains("xml", StringComparison.OrdinalIgnoreCase) ||
-               contentType.Contains("text", StringComparison.OrdinalIgnoreCase) ||
-               contentType.Contains("javascript", StringComparison.OrdinalIgnoreCase) ||
-               contentType.Contains("html", StringComparison.OrdinalIgnoreCase) ||
-               contentType.Contains("x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase);
-    }
+   
 
     private static async Task<byte[]> ReadAtMostAsync(Stream stream, int byteLimit)
     {
@@ -263,17 +251,5 @@ public class DebugProbeMiddleware
         }
 
         return buffer.ToArray();
-    }
-
-    private static string Trim(string? value, int max = 2000)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return value ?? string.Empty;
-        }
-
-        return value.Length <= max
-            ? value
-            : value.Substring(0, max);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using DebugProbe.AspNetCore.Internal.Utils;
 using DebugProbe.AspNetCore.Models;
 using Microsoft.AspNetCore.Http;
 
@@ -28,23 +29,19 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
         {
             var response = await base.SendAsync(request, cancellationToken);
 
-            CaptureRequest(request, response, null, started.ElapsedMilliseconds);
+            await CaptureRequest(request, response, null, started.ElapsedMilliseconds);
 
             return response;
         }
         catch (Exception ex)
         {
-            CaptureRequest(
-                request,
-                null,
-                ex,
-                started.ElapsedMilliseconds);
+            await CaptureRequest(request, null, ex, started.ElapsedMilliseconds);
 
             throw;
         }
     }
 
-    private void CaptureRequest(HttpRequestMessage request, HttpResponseMessage? response, Exception? exception, long durationMs)
+    private async Task CaptureRequest(HttpRequestMessage request, HttpResponseMessage? response, Exception? exception,long durationMs)
     {
         var context = _httpContextAccessor.HttpContext;
 
@@ -63,7 +60,7 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
             return;
         }
 
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        var outgoing = new DebugOutgoingRequest
         {
             Method = request.Method.Method,
 
@@ -82,6 +79,32 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
             RequestHeaders = request.Headers.ToDictionary(x => x.Key, x => SensitiveHeaders.Contains(x.Key) ? "[REDACTED]" : string.Join(", ", x.Value)),
 
             ResponseHeaders = response != null ? response.Headers.ToDictionary(x => x.Key, x => SensitiveHeaders.Contains(x.Key) ? "[REDACTED]" : string.Join(", ", x.Value)) : []
-        });
+        };
+
+        if (request.Content != null)
+        {
+            var contentType = request.Content.Headers.ContentType?.MediaType;
+
+            if (HttpContentUtils.IsTextContent(contentType))
+            {
+                var body = await request.Content.ReadAsStringAsync();
+
+                outgoing.RequestBody = JsonUtils.Format(HttpContentUtils.Trim(body, 2000));
+            }
+        }
+
+        if (response?.Content != null)
+        {
+            var contentType = response.Content.Headers.ContentType?.MediaType;
+
+            if (HttpContentUtils.IsTextContent(contentType))
+            {
+                var body = await response.Content.ReadAsStringAsync();
+
+                outgoing.ResponseBody = JsonUtils.Format(HttpContentUtils.Trim(body, 2000));
+            }
+        }
+
+        entry.OutgoingRequests.Add(outgoing);
     }
 }

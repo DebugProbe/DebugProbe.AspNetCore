@@ -16,8 +16,27 @@ namespace DebugProbe.SampleApi.Controllers
             _httpClientFactory = httpClientFactory;
         }
 
-        [HttpGet("CallExternalApi")]
-        public async Task<IActionResult> CallExternalApi()
+        [HttpPost("CallExternalPost")]
+        public async Task<IActionResult> CallExternalPost()
+        {
+            var client = _httpClientFactory.CreateClient();
+
+            var response = await client.PostAsJsonAsync(
+                "https://jsonplaceholder.typicode.com/posts",
+                new
+                {
+                    title = "DebugProbe",
+                    body = "Tracing test",
+                    userId = 1
+                });
+
+            var content = await response.Content.ReadAsStringAsync();
+
+            return Ok(content);
+        }
+
+        [HttpGet("CallExternalGet")]
+        public async Task<IActionResult> CallExternalGet()
         {
             var client = _httpClientFactory.CreateClient();
 
