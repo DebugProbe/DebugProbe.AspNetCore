@@ -13,7 +13,7 @@ public class DebugProbeOptionsTests
         var options = new DebugProbeOptions();
 
         Assert.Equal(20, options.MaxEntries);
-        Assert.Equal(256, options.MaxBodyCaptureSizeKb);
+        Assert.Equal(32, options.MaxBodyCaptureSizeKb);
         Assert.False(options.AllowLocalCompareTargets);
         Assert.Empty(options.IgnorePaths);
     }

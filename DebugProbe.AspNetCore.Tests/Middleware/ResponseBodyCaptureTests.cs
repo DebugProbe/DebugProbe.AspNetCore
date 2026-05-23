@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using DebugProbe.AspNetCore.Tests.Infrastructure;
 
 namespace DebugProbe.AspNetCore.Tests.Middleware;
