@@ -16,6 +16,22 @@ public class DebugProbeMiddleware
 {
     private const string BodyTooLargeMessage = "[Body too large]";
     private const string BinaryBodyMessage = "[Body not captured: non-text content]";
+    private static readonly string[] DefaultIgnorePaths =
+    [
+        "/debug",
+        "/swagger",
+        "/.well-known",
+
+        // browser noise
+        "/favicon.ico",
+
+        // scanners
+        "/.git",
+        "/wp-admin",
+        "/phpmyadmin",
+        "/cgi-bin",
+        "/server-status"
+    ];
 
     private static readonly HashSet<string> SensitiveHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -37,12 +53,12 @@ public class DebugProbeMiddleware
     {
         var path = context.Request.Path.Value ?? string.Empty;
 
-        var ignored =
-       path.StartsWith("/debug", StringComparison.OrdinalIgnoreCase) ||
-       path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase) ||
-       path.StartsWith("/.well-known", StringComparison.OrdinalIgnoreCase) ||
-       _options.IgnorePaths.Any(x =>
-           path.StartsWith(x, StringComparison.OrdinalIgnoreCase));
+        var ignorePaths = DefaultIgnorePaths
+            .Concat(_options.IgnorePaths)
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        var ignored = ignorePaths.Any(x =>
+            path.StartsWith(x, StringComparison.OrdinalIgnoreCase));
 
         if (ignored)
         {
