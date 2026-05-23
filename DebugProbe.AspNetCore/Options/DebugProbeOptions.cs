@@ -13,7 +13,7 @@ public class DebugProbeOptions
     /// <summary>
     /// Maximum captured request or response body size in kilobytes.
     /// </summary>
-    public int MaxBodyCaptureSizeKb { get; set; } = 256;
+    public int MaxBodyCaptureSizeKb { get; set; } = 32;
 
     /// <summary>
     /// Allows compare requests to local or private network targets.

@@ -1,10 +1,14 @@
 ﻿using System.Diagnostics;
 using DebugProbe.AspNetCore.Internal.Utils;
 using DebugProbe.AspNetCore.Models;
+using DebugProbe.AspNetCore.Options;
 using Microsoft.AspNetCore.Http;
 
 namespace DebugProbe.AspNetCore.Handlers;
 
+/// <summary>
+/// Captures outgoing HttpClient requests and responses.
+/// </summary>
 public class DebugProbeHttpClientHandler : DelegatingHandler
 {
     private static readonly HashSet<string> SensitiveHeaders =
@@ -14,13 +18,20 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
         "Set-Cookie"
     ];
 
+    private readonly DebugProbeOptions _options;
+
     private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public DebugProbeHttpClientHandler(IHttpContextAccessor httpContextAccessor)
+    public DebugProbeHttpClientHandler(IHttpContextAccessor httpContextAccessor, DebugProbeOptions options)
     {
         _httpContextAccessor = httpContextAccessor;
+
+        _options = options;
     }
 
+    /// <summary>
+    /// Sends the HTTP request and captures tracing information.
+    /// </summary>
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var started = Stopwatch.StartNew();
@@ -41,6 +52,9 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
         }
     }
 
+    /// <summary>
+    /// Captures outgoing request details and stores them in the active DebugProbe entry.
+    /// </summary>
     private async Task CaptureRequest(HttpRequestMessage request, HttpResponseMessage? response, Exception? exception,long durationMs)
     {
         var context = _httpContextAccessor.HttpContext;
@@ -89,7 +103,7 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
             {
                 var body = await request.Content.ReadAsStringAsync();
 
-                outgoing.RequestBody = JsonUtils.Format(HttpContentUtils.Trim(body, 2000));
+                outgoing.RequestBody = JsonUtils.Format(HttpContentUtils.Trim(body, _options.MaxBodyCaptureSizeKb * 1024));
             }
         }
 
@@ -101,7 +115,7 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
             {
                 var body = await response.Content.ReadAsStringAsync();
 
-                outgoing.ResponseBody = JsonUtils.Format(HttpContentUtils.Trim(body, 2000));
+                outgoing.ResponseBody = JsonUtils.Format(HttpContentUtils.Trim(body, _options.MaxBodyCaptureSizeKb * 1024));
             }
         }
 

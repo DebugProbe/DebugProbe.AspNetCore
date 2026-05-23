@@ -51,13 +51,9 @@ internal static class HtmlRenderer
             .Select(method => $@"<option value=""{Encode(method)}"">{Encode(method)}</option>"));
 
         var totalRequests = items.Count;
-        var averageResponseMs = totalRequests == 0
-            ? 0
-            : (int)Math.Round(items.Average(x => x.DurationMs));
+        var averageResponseMs = totalRequests == 0 ? 0 : (int)Math.Round(items.Average(x => x.DurationMs));
         var slowRequests = items.Count(x => x.DurationMs >= slowRequestThresholdMs);
-        var errorRate = totalRequests == 0
-            ? 0
-            : items.Count(x => x.StatusCode >= 400) * 100d / totalRequests;
+        var errorRate = totalRequests == 0 ? 0 : items.Count(x => x.StatusCode >= 400) * 100d / totalRequests;
 
         return BuildLayout(EmbeddedResources.Index
             .Replace("{{rows}}", rows)
@@ -153,7 +149,7 @@ internal static class HtmlRenderer
         }
 
         return BuildTraceCard(
-            "HttpClient",
+            "Http Client",
             request.Method,
             request.Url,
             classes,
@@ -163,15 +159,7 @@ internal static class HtmlRenderer
             details: details);
     }
 
-    private static string BuildTraceCard(
-        string label,
-        string method,
-        string target,
-        string classes,
-        IEnumerable<string> details,
-        int? statusCode = null,
-        string? statusText = null,
-        long? durationMs = null)
+    private static string BuildTraceCard(string label, string method, string target, string classes, IEnumerable<string> details, int? statusCode = null, string? statusText = null, long? durationMs = null)
     {
         var targetHost = GetDisplayTarget(target);
         var status = statusCode.HasValue
@@ -179,13 +167,9 @@ internal static class HtmlRenderer
             : !string.IsNullOrWhiteSpace(statusText)
                 ? $@"<span class=""status status-500"">{Encode(statusText)}</span>"
             : "";
-        var duration = durationMs.HasValue
-            ? $@"<span>{durationMs.Value} ms</span>"
-            : "";
+        var duration = durationMs.HasValue ? $@"<span>{durationMs.Value} ms</span>" : "";
 
-        var methodPill = !string.IsNullOrWhiteSpace(method) 
-            ? $@"<span class=""method-pill"">{Encode(method)}</span>"
-            : "";
+        var methodPill = !string.IsNullOrWhiteSpace(method)  ? $@"<span class=""method-pill"">{Encode(method)}</span>" : "";
 
         return $@"
         <article class=""trace-card {Encode(classes)}"">
@@ -270,9 +254,7 @@ internal static class HtmlRenderer
     {
         if (Uri.TryCreate(value, UriKind.Absolute, out var uri))
         {
-            return string.IsNullOrWhiteSpace(uri.PathAndQuery)
-                ? uri.Host
-                : $"{uri.Host}{uri.PathAndQuery}";
+            return string.IsNullOrWhiteSpace(uri.PathAndQuery) ? uri.Host : $"{uri.Host}{uri.PathAndQuery}";
         }
 
         return value;
