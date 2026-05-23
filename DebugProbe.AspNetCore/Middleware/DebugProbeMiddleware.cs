@@ -43,12 +43,18 @@ public class DebugProbeMiddleware
     private readonly RequestDelegate _next;
     private readonly DebugProbeOptions _options;
 
+    /// <summary>
+    /// Initializes a new instance of the middleware.
+    /// </summary>
     public DebugProbeMiddleware(RequestDelegate next, DebugProbeOptions options)
     {
         _next = next;
         _options = options;
     }
 
+    /// <summary>
+    /// Processes the current HTTP request.
+    /// </summary>
     public async Task Invoke(HttpContext context, DebugEntryStore store)
     {
         var path = context.Request.Path.Value ?? string.Empty;

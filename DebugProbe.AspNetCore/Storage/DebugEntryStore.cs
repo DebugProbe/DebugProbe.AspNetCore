@@ -9,14 +9,18 @@ using DebugProbe.AspNetCore.Options;
 namespace DebugProbe.AspNetCore.Storage;
 
 /// <summary>
-/// In-memory store for DebugEntry instances with a configurable size limit.
+/// Stores captured DebugProbe entries in memory.
 /// </summary>
 public class DebugEntryStore
 {
+    /// <summary>
+    /// Gets environment information for the current application.
+    /// </summary>
     public DebugEnvironment Environment { get; }
 
     private readonly ConcurrentQueue<DebugEntry> _queue = new();
     private readonly int _limit;
+
 
     public DebugEntryStore(DebugProbeOptions options)
     {

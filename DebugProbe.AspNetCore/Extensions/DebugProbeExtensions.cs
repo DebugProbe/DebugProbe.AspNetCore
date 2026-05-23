@@ -13,6 +13,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace DebugProbe.AspNetCore.Extensions;
 
+/// <summary>
+/// Extension methods for configuring DebugProbe.
+/// </summary>
 public static class DebugProbeExtensions
 {
     private static readonly HttpClient Http = new()
@@ -20,9 +23,10 @@ public static class DebugProbeExtensions
         Timeout = TimeSpan.FromSeconds(5)
     };
 
-    public static IServiceCollection AddDebugProbe(
-        this IServiceCollection services,
-        Action<DebugProbeOptions>? configure = null)
+    /// <summary>
+    /// Enables the DebugProbe middleware and dashboard.
+    /// </summary>
+    public static IServiceCollection AddDebugProbe(this IServiceCollection services, Action<DebugProbeOptions>? configure = null)
     {
         var options = new DebugProbeOptions();
         configure?.Invoke(options);
@@ -33,6 +37,9 @@ public static class DebugProbeExtensions
         return services;
     }
 
+    /// <summary>
+    /// Registers DebugProbe services.
+    /// </summary>
     public static IApplicationBuilder UseDebugProbe(this IApplicationBuilder app)
     {
         app.UseMiddleware<DebugProbeMiddleware>();
@@ -188,6 +195,4 @@ public static class DebugProbeExtensions
 
         return app;
     }
-
-   
 }
