@@ -1,28 +1,22 @@
 ﻿# DebugProbe.AspNetCore
 
-Debug HTTP traffic directly inside your ASP.NET Core pipeline.
+DebugProbe.AspNetCore is a lightweight ASP.NET Core debugging tool for inspecting HTTP traffic directly inside your application.
 
-[DebugProbe Website](https://debugprobe.dev)
+It captures request and response data, exposes a local dashboard, and helps compare traces during API development without requiring a proxy, browser extension, or external SaaS service.
 
----
+## Links
 
-## Why DebugProbe?
-
-- Inspect requests and responses in real time
-- No proxies or external tools
-- Built-in request tracing UI
-- Compare responses across environments
-- Minimal setup for ASP.NET Core applications
-
----
+- Website: [debugprobe.dev](https://debugprobe.dev)
+- Documentation: [debugprobe.dev/docs](https://debugprobe.dev/docs)
+- Live demo: [demo.debugprobe.dev/debug](https://demo.debugprobe.dev/debug)
+- Demo API: [demo.debugprobe.dev/swagger](https://demo.debugprobe.dev/swagger)
+- NuGet: [DebugProbe.AspNetCore](https://www.nuget.org/packages/DebugProbe.AspNetCore)
 
 ## Install
 
 ```bash
 dotnet add package DebugProbe.AspNetCore
 ```
-
----
 
 ## Quick Start
 
@@ -32,13 +26,11 @@ builder.Services.AddDebugProbe();
 app.UseDebugProbe();
 ```
 
-Open:
+Start your application and open:
 
 ```txt
 http://localhost:{port}/debug
 ```
-
----
 
 ## Optional Configuration
 
@@ -61,56 +53,44 @@ builder.Services.AddDebugProbe(options =>
 app.UseDebugProbe();
 ```
 
----
-
 ## Features
 
-- Request and response inspection
-- Headers, query params, and body capture
-- Response comparison across environments
-- JSON formatting
+- Request inspection
+- Response inspection
+- Headers, query string, and body capture
+- Error visibility
+- Local debugging dashboard
+- Trace comparison across runs or environments
+- JSON formatting for captured payloads
 - Configurable body capture limits
-- Ignore noisy endpoints
+- Ignored path configuration for noisy or sensitive endpoints
 - Sensitive header masking
-
----
+- Outgoing `HttpClient` request tracing
 
 ## Security Defaults
 
-Sensitive headers are automatically masked:
+DebugProbe masks common sensitive headers automatically:
 
-- Authorization
-- Cookie
-- Set-Cookie
+- `Authorization`
+- `Cookie`
+- `Set-Cookie`
 
-Localhost compare targets are blocked by default.
+## Intended Usage
 
----
+DebugProbe is designed primarily for local development and controlled development environments.
 
-## Production Usage
+If you use it outside local development, protect the dashboard with authentication, restrict network access, and avoid capturing sensitive endpoints or payloads.
 
-DebugProbe is intended primarily for development environments.
+## Documentation
 
-If used in production:
+For full setup details, screenshots, dashboard behavior, configuration options, and live examples, see the documentation:
 
-- add authentication
-- restrict access
-- filter sensitive data
+[https://debugprobe.dev/docs](https://debugprobe.dev/docs)
 
----
+## Contributing
 
-## Documentation & Demo
-
-Visit the website for:
-- latest screenshots
-- demos
-- guides
-- updates
-
-https://debugprobe.dev
-
----
+Contributions are welcome. Please read [CONTRIBUTING.md](https://github.com/DebugProbe/DebugProbe.AspNetCore?tab=contributing-ov-file) before opening an issue or pull request.
 
 ## License
 
-Apache License 2.0
+DebugProbe.AspNetCore is licensed under the [Apache License 2.0](https://github.com/DebugProbe/DebugProbe.AspNetCore/blob/main/LICENSE).
