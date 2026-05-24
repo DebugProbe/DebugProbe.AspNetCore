@@ -7,7 +7,7 @@ Thank you for your interest in contributing to DebugProbe.AspNetCore.
 Clone the repository and open the solution:
 co
 ```bash
-git clone https://github.com/georgidhristov/DebugProbe.AspNetCore.git
+git clone https://github.com/DebugProbe/DebugProbe.AspNetCore.git
 ```
 
 Open:
