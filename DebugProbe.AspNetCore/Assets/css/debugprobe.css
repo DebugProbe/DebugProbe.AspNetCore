@@ -681,17 +681,21 @@ tbody tr:last-child td {
 
 .code-block {
     position: relative;
+    min-width: 0;
     border-top: 1px solid #2d3748;
 }
 
     .code-block pre {
         min-height: 18px;
-        max-height: 360px;
+        max-height: 420px;
         margin: 0;
     }
 
 pre {
-    overflow: auto;
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
     margin: 0;
     padding: 12px 84px 12px 12px;
     background: #1e1e1e;
@@ -699,6 +703,7 @@ pre {
     color: #dcdcdc;
     font-size: 13px;
     line-height: 1.4;
+    white-space: pre;
     tab-size: 2;
 }
 
@@ -709,6 +714,7 @@ pre {
 .json-compare {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
     gap: 10px;
 }
 
@@ -776,7 +782,30 @@ pre {
 }
 
 .compare-pane {
+    display: flex;
+    flex-direction: column;
     min-width: 0;
+    min-height: 0;
+}
+
+.compare-pane .code-block {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 420px;
+    overflow: hidden;
+    border-radius: 0 0 6px 6px;
+}
+
+.compare-pane .code-block pre {
+    flex: 1 1 auto;
+    height: 100%;
+    max-height: none;
+}
+
+.compare-pane .compare-empty {
+    flex: 1 1 auto;
 }
 
 .compare-pane-title {
@@ -923,10 +952,13 @@ pre {
 ========================= */
 
 .diff-line {
+    box-sizing: border-box;
+    width: max-content;
     min-height: 18px;
-    padding-left: 6px;
+    padding: 0 6px;
     background: rgba(255, 200, 0, 0.12);
     border-left: 3px solid #f1c40f;
+    white-space: pre;
 }
 
 .diff-line-added {
