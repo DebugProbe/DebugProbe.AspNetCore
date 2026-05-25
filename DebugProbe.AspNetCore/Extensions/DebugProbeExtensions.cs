@@ -155,6 +155,10 @@ public static class DebugProbeExtensions
 
                 return Results.Ok(new
                 {
+                    localTrace = localEntry,
+                    remoteTrace = remoteEntry,
+                    localEnvironment,
+                    remoteEnvironment,
                     method = new { local = localEntry.Method, remote = remoteEntry.Method },
                     path = new { local = localEntry.Path, remote = remoteEntry.Path },
                     status = new { local = localEntry.StatusCode, remote = remoteEntry.StatusCode },
