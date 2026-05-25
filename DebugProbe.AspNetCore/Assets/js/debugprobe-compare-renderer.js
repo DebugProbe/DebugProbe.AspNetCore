@@ -1,6 +1,6 @@
 window.runCompare = async function () {
 
-    const id = window.location.pathname.split('/').pop();
+    const id = getLocalTraceId();
     const base = document.getElementById('baseUrl').value.trim();
     const remoteId = document.getElementById('compareId').value.trim();
 
@@ -10,6 +10,7 @@ window.runCompare = async function () {
     }
 
     setCompareResult('<div class="compare-message">Comparing...</div>');
+    setOpenCompareButtonVisible(false);
 
     try {
         const res = await fetch(`/debug/compare/${id}?baseUrl=${encodeURIComponent(base)}&remoteTraceId=${encodeURIComponent(remoteId)}`);
@@ -21,13 +22,60 @@ window.runCompare = async function () {
         }
 
         setCompareResult(renderCompare(await res.json()));
+        setOpenCompareButtonVisible(true);
     } catch (error) {
         setCompareResult(`<div class="compare-message compare-message-error">${escapeHtml(error.message || 'Compare failed')}</div>`);
     }
 };
 
+window.openCompareInNewTab = function () {
+    const localTraceId = getLocalTraceId();
+    const base = document.getElementById('baseUrl').value.trim();
+    const traceId = document.getElementById('compareId').value.trim();
+
+    if (!base || !traceId) {
+        return;
+    }
+
+    const url = `/compare?baseUrl=${encodeURIComponent(base)}&traceId=${encodeURIComponent(traceId)}&localTraceId=${encodeURIComponent(localTraceId)}`;
+    window.open(url, '_blank', 'noopener');
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const baseInput = document.getElementById('baseUrl');
+    const traceInput = document.getElementById('compareId');
+
+    if (!baseInput || !traceInput) {
+        return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const baseUrl = params.get('baseUrl');
+    const traceId = params.get('traceId');
+
+    if (!baseUrl || !traceId) {
+        return;
+    }
+
+    baseInput.value = baseUrl;
+    traceInput.value = traceId;
+    window.runCompare();
+});
+
 function setCompareResult(html) {
     document.getElementById('compareResult').innerHTML = html;
+}
+
+function getLocalTraceId() {
+    const input = document.getElementById('localTraceId');
+    return input?.value || window.location.pathname.split('/').pop();
+}
+
+function setOpenCompareButtonVisible(visible) {
+    const button = document.getElementById('openCompareTab');
+    if (button) {
+        button.hidden = !visible;
+    }
 }
 
 function renderCompare(result) {

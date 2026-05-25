@@ -365,6 +365,45 @@ h4 {
     margin-top: 22px;
 }
 
+.compare-page .compare-card {
+    margin-top: 0;
+}
+
+.compare-open-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.compare-open-tab:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    color: #111827;
+}
+
+.compare-open-tab[hidden] {
+    display: none;
+}
+
+.compare-open-tab svg {
+    width: 15px;
+    height: 15px;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+}
+
 .mono-value {
     overflow: hidden;
     max-width: min(520px, 58vw);

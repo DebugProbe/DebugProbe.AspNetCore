@@ -129,6 +129,31 @@ internal static class HtmlRenderer
         return BuildLayout(content);
     }
 
+    public static string RenderComparePage(string localTraceId, string baseUrl, string traceId)
+    {
+        var content = $@"
+        <div class=""container compare-page"">
+            <section class=""trace-card compare-card"" aria-label=""Compare trace result"">
+                <div class=""trace-card-main"">
+                    <div class=""trace-card-header"">
+                        <div class=""trace-card-title"">
+                            <span class=""trace-dot"" aria-hidden=""true""></span>
+                            <span class=""trace-label"">Compare Trace</span>
+                        </div>
+                    </div>
+                    <input id=""localTraceId"" type=""hidden"" value=""{Encode(localTraceId)}"" />
+                    <input id=""baseUrl"" type=""hidden"" value=""{Encode(baseUrl)}"" />
+                    <input id=""compareId"" type=""hidden"" value=""{Encode(traceId)}"" />
+                    <div id=""compareResult"">
+                        <div class=""compare-message"">Comparing...</div>
+                    </div>
+                </div>
+            </section>
+        </div>";
+
+        return BuildLayout(content);
+    }
+
     private static string BuildOutgoingRequestCard(DebugOutgoingRequest request)
     {
         var classes = request.StatusCode >= 400 || !string.IsNullOrWhiteSpace(request.Exception)
