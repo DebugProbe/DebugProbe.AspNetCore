@@ -35,6 +35,7 @@ Use descriptive lowercase branch names.
 Examples:
 
 ```text
+feat/add-request-filtering
 feature/add-request-filtering
 fix/handle-empty-response-body
 refactor/split-compare-engine
