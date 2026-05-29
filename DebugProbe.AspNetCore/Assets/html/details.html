@@ -105,7 +105,33 @@
                 <div class="trace-card-title">
                     <span class="trace-dot" aria-hidden="true"></span>
                     <span class="trace-label">Compare Trace</span>
-                    <strong>Remote environment</strong>
+                </div>
+                <div class="compare-header-actions">
+                    <button id="copyCompareLink"
+                            class="compare-icon-action"
+                            type="button"
+                            title="Copy share link"
+                            aria-label="Copy share link"
+                            onclick="copyCompareShareLink()"
+                            hidden>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                    </button>
+                    <button id="openCompareTab"
+                            class="compare-icon-action"
+                            type="button"
+                            title="Open in new tab"
+                            aria-label="Open in new tab"
+                            onclick="openCompareInNewTab()"
+                            hidden>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M14 3h7v7"></path>
+                            <path d="M10 14 21 3"></path>
+                            <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
 

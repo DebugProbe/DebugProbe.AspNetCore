@@ -99,6 +99,19 @@ public static class DebugProbeExtensions
 
             }).ExcludeFromDescription();
 
+            webApp.MapGet("/compare", (string? baseUrl, string? traceId, string? localTraceId) =>
+            {
+                if (string.IsNullOrWhiteSpace(localTraceId))
+                {
+                    return Results.BadRequest("Missing local trace id");
+                }
+
+                var html = HtmlRenderer.RenderComparePage(localTraceId, baseUrl ?? "", traceId ?? "");
+
+                return Results.Content(html, "text/html");
+
+            }).ExcludeFromDescription();
+
             webApp.MapGet("/debug/compare/{id}", async (string id, string baseUrl, string remoteTraceId,
                 DebugEntryStore store,
                 DebugProbeOptions options) =>
@@ -155,6 +168,10 @@ public static class DebugProbeExtensions
 
                 return Results.Ok(new
                 {
+                    localTrace = localEntry,
+                    remoteTrace = remoteEntry,
+                    localEnvironment,
+                    remoteEnvironment,
                     method = new { local = localEntry.Method, remote = remoteEntry.Method },
                     path = new { local = localEntry.Path, remote = remoteEntry.Path },
                     status = new { local = localEntry.StatusCode, remote = remoteEntry.StatusCode },

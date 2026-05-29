@@ -21,6 +21,7 @@ public class DebugProbeMiddleware
     private static readonly string[] DefaultIgnorePaths =
     [
         "/debug",
+        "/compare",
         "/swagger",
         "/.well-known",
 

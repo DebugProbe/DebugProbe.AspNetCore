@@ -365,6 +365,51 @@ h4 {
     margin-top: 22px;
 }
 
+.compare-page .compare-card {
+    margin-top: 0;
+}
+
+.compare-header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.compare-icon-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.compare-icon-action:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    color: #111827;
+}
+
+.compare-icon-action[hidden] {
+    display: none;
+}
+
+.compare-icon-action svg {
+    width: 15px;
+    height: 15px;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+}
+
 .mono-value {
     overflow: hidden;
     max-width: min(520px, 58vw);
@@ -477,9 +522,11 @@ tbody tr:last-child td {
 
 #compareResult:not(:empty) {
     margin: 0 10px 10px;
-    overflow: hidden;
+    display: grid;
+    gap: 8px;
     border: 1px solid #eceff3;
     border-radius: 6px;
+    padding: 8px;
 }
 
 .payload-panel {
@@ -634,17 +681,21 @@ tbody tr:last-child td {
 
 .code-block {
     position: relative;
+    min-width: 0;
     border-top: 1px solid #2d3748;
 }
 
     .code-block pre {
         min-height: 18px;
-        max-height: 360px;
+        max-height: 420px;
         margin: 0;
     }
 
 pre {
-    overflow: auto;
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
     margin: 0;
     padding: 12px 84px 12px 12px;
     background: #1e1e1e;
@@ -652,6 +703,7 @@ pre {
     color: #dcdcdc;
     font-size: 13px;
     line-height: 1.4;
+    white-space: pre;
     tab-size: 2;
 }
 
@@ -662,6 +714,7 @@ pre {
 .json-compare {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
     gap: 10px;
 }
 
@@ -685,7 +738,7 @@ pre {
 
 .compare-row {
     display: grid;
-    grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1fr) minmax(0, 1fr) minmax(100px, 0.45fr);
     gap: 12px;
     padding: 8px 10px;
     border-bottom: 1px solid #f2f4f7;
@@ -715,6 +768,11 @@ pre {
     font-size: 12px;
 }
 
+.compare-row strong {
+    color: #4b5563;
+    font-size: 12px;
+}
+
 .compare-row-changed {
     background: rgba(255, 200, 0, 0.12);
 }
@@ -724,7 +782,30 @@ pre {
 }
 
 .compare-pane {
+    display: flex;
+    flex-direction: column;
     min-width: 0;
+    min-height: 0;
+}
+
+.compare-pane .code-block {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 420px;
+    overflow: hidden;
+    border-radius: 0 0 6px 6px;
+}
+
+.compare-pane .code-block pre {
+    flex: 1 1 auto;
+    height: 100%;
+    max-height: none;
+}
+
+.compare-pane .compare-empty {
+    flex: 1 1 auto;
 }
 
 .compare-pane-title {
@@ -764,6 +845,85 @@ pre {
     color: #b42318;
 }
 
+.compare-summary {
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+    background: #fff;
+    border: 1px solid #eceff3;
+    border-radius: 6px;
+}
+
+.compare-summary-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f2f4f7;
+}
+
+.compare-summary-head strong {
+    color: #111827;
+    font-size: 15px;
+}
+
+.compare-summary-head span,
+.compare-summary-empty {
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.compare-summary-group {
+    display: grid;
+    gap: 6px;
+}
+
+.compare-summary-group h4,
+.compare-subhead {
+    margin: 0;
+    color: #4b5563;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.compare-summary-item {
+    display: grid;
+    grid-template-columns: minmax(110px, auto) minmax(160px, 0.8fr) minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 7px 8px;
+    background: #fbfbfc;
+    border: 1px solid #f2f4f7;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.compare-summary-item strong {
+    color: #111827;
+}
+
+.compare-summary-item small {
+    overflow-wrap: anywhere;
+    color: #4b5563;
+    font-size: 12px;
+}
+
+.compare-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 22px;
+    padding: 0 8px;
+    background: #eef2ff;
+    border-radius: 999px;
+    color: #3730a3;
+    font-size: 11px;
+    font-weight: 800;
+}
+
 /* =========================
    Badges
 ========================= */
@@ -792,10 +952,13 @@ pre {
 ========================= */
 
 .diff-line {
+    box-sizing: border-box;
+    width: max-content;
     min-height: 18px;
-    padding-left: 6px;
+    padding: 0 6px;
     background: rgba(255, 200, 0, 0.12);
     border-left: 3px solid #f1c40f;
+    white-space: pre;
 }
 
 .diff-line-added {

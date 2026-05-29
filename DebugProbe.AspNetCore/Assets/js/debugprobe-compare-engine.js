@@ -15,15 +15,13 @@
 
     if ((!local.ok && !localEmpty) || (!remote.ok && !remoteEmpty)) {
         return {
-            local: (localEmpty ? '(empty)' : local.raw)
-                .split('\n')
+            local: linesForParsedOrRaw(local, localEmpty)
                 .map(x => ({
                     text: x,
                     state: !local.ok && !localEmpty ? 'invalid' : ''
                 })),
 
-            remote: (remoteEmpty ? '(empty)' : remote.raw)
-                .split('\n')
+            remote: linesForParsedOrRaw(remote, remoteEmpty)
                 .map(x => ({
                     text: x,
                     state: !remote.ok && !remoteEmpty ? 'invalid' : ''
@@ -66,6 +64,16 @@
     );
 
     return rows;
+}
+
+function linesForParsedOrRaw(payload, empty) {
+    if (empty) {
+        return ['(empty)'];
+    }
+
+    return payload.ok
+        ? stringifyLines(payload.value, 0, false)
+        : payload.raw.split('\n');
 }
 
 function parseJson(json) {
