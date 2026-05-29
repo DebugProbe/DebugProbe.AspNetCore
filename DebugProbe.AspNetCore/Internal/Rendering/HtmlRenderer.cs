@@ -26,7 +26,11 @@ internal static class HtmlRenderer
     {
         const int slowRequestThresholdMs = 1000;
 
-        var rows = string.Join("", items.Select(x => $@"
+        var rows = string.Join("", items.Select(x =>
+        {
+            var pathWithQuery = string.IsNullOrEmpty(x.Query) ? x.Path : $"{x.Path}{x.Query}";
+
+            return $@"
         <tr data-url=""/debug/{Encode(x.Id)}""
             data-method=""{Encode(x.Method)}""
             data-status-family=""{x.StatusCode / 100}""
@@ -34,11 +38,11 @@ internal static class HtmlRenderer
             class=""clickable-row"">
             <td>{x.Timestamp:HH:mm:ss}</td>
             <td><span class=""method-pill"">{Encode(x.Method)}</span></td>
-            <td>{Encode(string.IsNullOrEmpty(x.Query) ? x.Path : $"{x.Path}{x.Query}")}</td>
+            <td class=""request-path""><span class=""request-path-value"" title=""{Encode(pathWithQuery)}"">{Encode(pathWithQuery)}</span></td>
             <td><span class=""status {GetStatusClass(x.StatusCode)}"">{x.StatusCode}</span></td>
             <td>{x.DurationMs} ms</td>
-        </tr>"
-        ));
+        </tr>";
+        }));
 
         if (string.IsNullOrEmpty(rows))
             rows = "<tr class='empty-row'><td colspan='5'>No data</td></tr>";

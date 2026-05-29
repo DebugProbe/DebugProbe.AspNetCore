@@ -1,4 +1,5 @@
 using DebugProbe.AspNetCore.Internal.Rendering;
+using DebugProbe.AspNetCore.Internal.Resources;
 using DebugProbe.AspNetCore.Models;
 
 namespace DebugProbe.AspNetCore.Tests.Rendering;
@@ -24,6 +25,40 @@ public class HtmlRendererTests
         Assert.Contains("GET", html);
         Assert.Contains("/orders", html);
         Assert.Contains("200", html);
+    }
+
+    [Fact]
+    public void Render_index_page_constrains_path_cell_and_preserves_full_path_title()
+    {
+        var path = "/" + new string('a', 240);
+        var query = "?filter=" + new string('b', 120);
+        var fullPath = path + query;
+
+        var html = HtmlRenderer.RenderIndexPage(
+        [
+            new DebugEntry
+            {
+                Id = "trace-1",
+                Method = "GET",
+                Path = path,
+                Query = query,
+                StatusCode = 200,
+                Timestamp = new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero)
+            }
+        ]);
+
+        Assert.Contains($@"<td class=""request-path""><span class=""request-path-value"" title=""{fullPath}"">{fullPath}</span></td>", html);
+    }
+
+    [Fact]
+    public void Embedded_css_keeps_request_index_table_fixed_with_ellipsized_paths()
+    {
+        Assert.Contains("#requestTable", EmbeddedResources.Css);
+        Assert.Contains("table-layout: fixed;", EmbeddedResources.Css);
+        Assert.Contains(".request-path-value", EmbeddedResources.Css);
+        Assert.Contains("overflow: hidden;", EmbeddedResources.Css);
+        Assert.Contains("text-overflow: ellipsis;", EmbeddedResources.Css);
+        Assert.Contains("white-space: nowrap;", EmbeddedResources.Css);
     }
 
     [Fact]

@@ -429,6 +429,30 @@ table {
     border-collapse: collapse;
 }
 
+#requestTable {
+    table-layout: fixed;
+}
+
+#requestTable th:nth-child(1),
+#requestTable td:nth-child(1) {
+    width: 80px;
+}
+
+#requestTable th:nth-child(2),
+#requestTable td:nth-child(2) {
+    width: 96px;
+}
+
+#requestTable th:nth-child(4),
+#requestTable td:nth-child(4) {
+    width: 92px;
+}
+
+#requestTable th:nth-child(5),
+#requestTable td:nth-child(5) {
+    width: 100px;
+}
+
 .table-wrap {
     overflow-x: auto;
     background: #fff;
@@ -461,6 +485,18 @@ tbody tr:last-child td {
 
 .clickable-row {
     cursor: pointer;
+}
+
+.request-path {
+    min-width: 0;
+}
+
+.request-path-value {
+    display: block;
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .method-pill {
@@ -1092,4 +1128,3 @@ pre {
     background: #4a1717;
     color: #ff8a8a !important;
 }
-
