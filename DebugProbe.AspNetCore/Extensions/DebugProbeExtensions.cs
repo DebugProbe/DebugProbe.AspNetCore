@@ -11,6 +11,7 @@ using DebugProbe.AspNetCore.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http;
 
 namespace DebugProbe.AspNetCore.Extensions;
@@ -60,6 +61,11 @@ public static class DebugProbeExtensions
     /// </summary>
     public static IApplicationBuilder UseDebugProbe(this IApplicationBuilder app)
     {
+        var options = app.ApplicationServices.GetRequiredService<DebugProbeOptions>();
+        var environment = app.ApplicationServices.GetRequiredService<IHostEnvironment>();
+
+        options.AllowLocalCompareTargets ??= environment.IsDevelopment();
+
         app.UseMiddleware<DebugProbeMiddleware>();
         app.ApplicationServices.GetRequiredService<DebugEntryStore>();
 

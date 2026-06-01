@@ -18,9 +18,10 @@ public class DebugProbeOptions
     internal int MaxBodyCaptureSizeBytes => MaxBodyCaptureSizeKb * 1024;
 
     /// <summary>
-    /// Allows compare requests to local or private network targets.
+    /// Allows compare operations to target localhost and private network addresses.
+    /// Defaults to true in Development and false in other environments unless explicitly configured.
     /// </summary>
-    public bool AllowLocalCompareTargets { get; set; }
+    public bool? AllowLocalCompareTargets { get; set; }
 
     /// <summary>
     /// Additional request paths to ignore.

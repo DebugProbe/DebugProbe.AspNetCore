@@ -34,7 +34,7 @@ internal static class CompareUrlValidator
             return (false, null, "Failed to resolve compare server host");
         }
 
-        if (!options.AllowLocalCompareTargets)
+        if (options.AllowLocalCompareTargets != true)
         {
             if (IsLocalHostName(parsed.Host))
             {

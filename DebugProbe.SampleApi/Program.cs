@@ -11,7 +11,6 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDebugProbe(options =>
 {
     options.MaxEntries = 10;
-    options.AllowLocalCompareTargets = true;
 });
 
 var app = builder.Build();
