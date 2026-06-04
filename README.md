@@ -33,6 +33,8 @@ Start your application and open:
 http://localhost:{port}/debug
 ```
 
+In Production, DebugProbe captures traces but does not register UI endpoints unless explicitly enabled.
+
 ## Optional Configuration
 
 ```csharp
@@ -43,6 +45,8 @@ builder.Services.AddDebugProbe(options =>
     options.MaxBodyCaptureSizeKb = 256;
 
     options.AllowLocalCompareTargets = true;
+
+    options.AllowUiInProduction = false;
 
     options.IgnorePaths =
     [
@@ -84,6 +88,15 @@ Compare is useful when checking differences between local and remote environment
 Dynamic values such as IDs, timestamps, tokens, and selected headers are normalized so the compare view focuses on meaningful request and response differences.
 
 ## Security Defaults
+
+DebugProbe UI endpoints are disabled by default in Production. Capture and trace storage continue to run, but the dashboard, trace viewer, compare UI, UI assets, and UI clear action are not registered unless explicitly enabled:
+
+```csharp
+builder.Services.AddDebugProbe(options =>
+{
+    options.AllowUiInProduction = true;
+});
+```
 
 DebugProbe masks common sensitive headers automatically:
 

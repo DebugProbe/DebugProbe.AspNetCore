@@ -71,52 +71,82 @@ public static class DebugProbeExtensions
 
         if (app is WebApplication webApp)
         {
-            webApp.MapGet("/debug", async (HttpContext ctx, DebugEntryStore store) =>
+            if (ShouldMapUiEndpoints(environment, options))
             {
-                var items = store.GetAll()
-                    .OrderByDescending(x => x.Timestamp)
-                    .ToList();
-
-                var html = HtmlRenderer.RenderIndexPage(items);
-                ctx.Response.ContentType = "text/html";
-
-                await ctx.Response.WriteAsync(html);
-
-            }).ExcludeFromDescription();
-
-            webApp.MapGet("/debug/{id}", async (HttpContext ctx, string id, DebugEntryStore store) =>
-            {
-                var item = store.Get(id);
-
-                if (item is null)
+                webApp.MapGet("/debug", async (HttpContext ctx, DebugEntryStore store) =>
                 {
-                    ctx.Response.StatusCode = 404;
-                    await ctx.Response.WriteAsync("Not found");
-                    return;
-                }
+                    var items = store.GetAll()
+                        .OrderByDescending(x => x.Timestamp)
+                        .ToList();
 
-                var prettyRequest = JsonUtils.Format(item.RequestBody);
-                var prettyResponse = JsonUtils.Format(item.ResponseBody);
+                    var html = HtmlRenderer.RenderIndexPage(items);
+                    ctx.Response.ContentType = "text/html";
 
-                var html = HtmlRenderer.RenderDetailsPage(item, store.Environment, prettyRequest, prettyResponse);
-                ctx.Response.ContentType = "text/html";
+                    await ctx.Response.WriteAsync(html);
 
-                await ctx.Response.WriteAsync(html);
+                }).ExcludeFromDescription();
 
-            }).ExcludeFromDescription();
-
-            webApp.MapGet("/compare", (string? baseUrl, string? traceId, string? localTraceId) =>
-            {
-                if (string.IsNullOrWhiteSpace(localTraceId))
+                webApp.MapGet("/debug/{id}", async (HttpContext ctx, string id, DebugEntryStore store) =>
                 {
-                    return Results.BadRequest("Missing local trace id");
-                }
+                    var item = store.Get(id);
 
-                var html = HtmlRenderer.RenderComparePage(localTraceId, baseUrl ?? "", traceId ?? "");
+                    if (item is null)
+                    {
+                        ctx.Response.StatusCode = 404;
+                        await ctx.Response.WriteAsync("Not found");
+                        return;
+                    }
 
-                return Results.Content(html, "text/html");
+                    var prettyRequest = JsonUtils.Format(item.RequestBody);
+                    var prettyResponse = JsonUtils.Format(item.ResponseBody);
 
-            }).ExcludeFromDescription();
+                    var html = HtmlRenderer.RenderDetailsPage(item, store.Environment, prettyRequest, prettyResponse);
+                    ctx.Response.ContentType = "text/html";
+
+                    await ctx.Response.WriteAsync(html);
+
+                }).ExcludeFromDescription();
+
+                webApp.MapGet("/compare", (string? baseUrl, string? traceId, string? localTraceId) =>
+                {
+                    if (string.IsNullOrWhiteSpace(localTraceId))
+                    {
+                        return Results.BadRequest("Missing local trace id");
+                    }
+
+                    var html = HtmlRenderer.RenderComparePage(localTraceId, baseUrl ?? "", traceId ?? "");
+
+                    return Results.Content(html, "text/html");
+
+                }).ExcludeFromDescription();
+
+                webApp.MapGet("/debug/js/{file}", (string file) =>
+                {
+                    if (!EmbeddedResources.JavaScript.TryGetValue(file, out var content))
+                    {
+                        return Results.NotFound();
+                    }
+
+                    return Results.Text(content, "application/javascript");
+
+                }).ExcludeFromDescription();
+
+                webApp.MapPost("/debug/clear", (DebugEntryStore store) =>
+                {
+                    store.Clear();
+
+                    return Results.Ok();
+
+                }).ExcludeFromDescription();
+
+                webApp.Map("/debug/logo.png", ctx =>
+                    EmbeddedAssetWriter.WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.images.debugprobe_logo_white_transparent.png", "image/png")
+                ).ExcludeFromDescription();
+
+                webApp.Map("/debug/favicon.ico", ctx =>
+                    EmbeddedAssetWriter.WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.images.debugprobe_favicon.ico", "image/x-icon")
+                ).ExcludeFromDescription();
+            }
 
             webApp.MapGet("/debug/compare/{id}", async (string id, string baseUrl, string remoteTraceId,
                 DebugEntryStore store,
@@ -212,34 +242,13 @@ public static class DebugProbeExtensions
             }).ExcludeFromDescription();
 
 
-            webApp.MapGet("/debug/js/{file}", (string file) =>
-            {
-                if (!EmbeddedResources.JavaScript.TryGetValue(file, out var content))
-                {
-                    return Results.NotFound();
-                }
-
-                return Results.Text(content, "application/javascript");
-
-            }).ExcludeFromDescription();
-
-            webApp.MapPost("/debug/clear", (DebugEntryStore store) =>
-            {
-                store.Clear();
-
-                return Results.Ok();
-
-            }).ExcludeFromDescription();
-
-            webApp.Map("/debug/logo.png", ctx =>
-                EmbeddedAssetWriter.WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.images.debugprobe_logo_white_transparent.png", "image/png")
-            ).ExcludeFromDescription();
-
-            webApp.Map("/debug/favicon.ico", ctx =>
-                EmbeddedAssetWriter.WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.images.debugprobe_favicon.ico", "image/x-icon")
-            ).ExcludeFromDescription();
         }
 
         return app;
+    }
+
+    private static bool ShouldMapUiEndpoints(IHostEnvironment environment, DebugProbeOptions options)
+    {
+        return !environment.IsProduction() || options.AllowUiInProduction;
     }
 }

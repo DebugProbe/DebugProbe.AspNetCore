@@ -24,6 +24,12 @@ public class DebugProbeOptions
     public bool? AllowLocalCompareTargets { get; set; }
 
     /// <summary>
+    /// Allows DebugProbe UI endpoints to be registered in Production.
+    /// Defaults to false.
+    /// </summary>
+    public bool AllowUiInProduction { get; set; }
+
+    /// <summary>
     /// Additional request paths to ignore.
     /// </summary>
     public string[] IgnorePaths { get; set; } = [];

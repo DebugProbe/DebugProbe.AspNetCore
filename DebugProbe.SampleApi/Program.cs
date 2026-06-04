@@ -11,6 +11,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDebugProbe(options =>
 {
     options.MaxEntries = 10;
+    options.AllowUiInProduction = true;
 });
 
 var app = builder.Build();
@@ -20,8 +21,9 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    app.UseDebugProbe();
 }
+
+app.UseDebugProbe();
 
 app.UseHttpsRedirection();
 
