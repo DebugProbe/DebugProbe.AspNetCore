@@ -15,6 +15,7 @@ public class DebugProbeOptionsTests
         Assert.Equal(20, options.MaxEntries);
         Assert.Equal(32, options.MaxBodyCaptureSizeKb);
         Assert.Null(options.AllowLocalCompareTargets);
+        Assert.False(options.AllowUiInProduction);
         Assert.Empty(options.IgnorePaths);
     }
 
