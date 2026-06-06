@@ -52,6 +52,49 @@ public class DebugProbeHttpClientHandlerTests
         Assert.Contains("\"ok\": true", outgoing.ResponseBody);
     }
 
+    [Fact]
+    public async Task Redacts_configured_outgoing_url_headers_and_json_fields()
+    {
+        var entry = new DebugEntry();
+        var context = new DefaultHttpContext();
+        context.Items["DebugProbeEntry"] = entry;
+
+        using var handler = new DebugProbeHttpClientHandler(
+            new HttpContextAccessor { HttpContext = context },
+            new DebugProbeOptions
+            {
+                RedactedHeaders = ["Authorization", "X-Api-Key"],
+                RedactedQueryParameters = ["token"],
+                RedactedJsonFields = ["password", "refreshToken"]
+            })
+        {
+            InnerHandler = new StubHandler(_ =>
+            {
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("{\"refreshToken\":\"response-token\"}", Encoding.UTF8, "application/json")
+                };
+                return response;
+            })
+        };
+
+        using var client = new HttpClient(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.example.test/orders?token=query-secret&safe=yes")
+        {
+            Content = new StringContent("{\"password\":\"body-secret\"}", Encoding.UTF8, "application/json")
+        };
+        request.Headers.Add("X-Api-Key", "header-secret");
+
+        await client.SendAsync(request);
+
+        var outgoing = Assert.Single(entry.OutgoingRequests);
+
+        Assert.Equal("https://api.example.test/orders?token=[REDACTED]&safe=yes", outgoing.Url);
+        Assert.Equal("[REDACTED]", outgoing.RequestHeaders["X-Api-Key"]);
+        Assert.Contains("\"password\": \"[REDACTED]\"", outgoing.RequestBody);
+        Assert.Contains("\"refreshToken\": \"[REDACTED]\"", outgoing.ResponseBody);
+    }
+
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> send) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)

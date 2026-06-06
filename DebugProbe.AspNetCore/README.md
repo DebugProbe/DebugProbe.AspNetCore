@@ -53,6 +53,25 @@ builder.Services.AddDebugProbe(options =>
         "/api/auth/login",
         "/api/auth/refresh"
     ];
+
+    options.RedactedHeaders =
+    [
+        ..options.RedactedHeaders,
+        "X-Api-Key",
+        "X-Auth-Token"
+    ];
+
+    options.RedactedQueryParameters =
+    [
+        "api_key",
+        "access_token"
+    ];
+
+    options.RedactedJsonFields =
+    [
+        "password",
+        "refreshToken"
+    ];
 });
 
 app.UseDebugProbe();
@@ -69,7 +88,7 @@ app.UseDebugProbe();
 - JSON formatting for captured payloads
 - Configurable body capture limits
 - Ignored path configuration for noisy or sensitive endpoints
-- Sensitive header masking
+- Configurable redaction for sensitive headers, query parameters, and JSON fields
 - Outgoing `HttpClient` request tracing
 
 ## Trace Compare
@@ -103,6 +122,24 @@ DebugProbe masks common sensitive headers automatically:
 - `Authorization`
 - `Cookie`
 - `Set-Cookie`
+
+You can also configure application-specific values to redact before traces are stored:
+
+```csharp
+builder.Services.AddDebugProbe(options =>
+{
+    options.RedactedHeaders =
+    [
+        ..options.RedactedHeaders,
+        "X-Api-Key",
+        "Client-Secret"
+    ];
+
+    options.RedactedQueryParameters = ["token", "api_key", "access_token"];
+
+    options.RedactedJsonFields = ["password", "secret", "refreshToken"];
+});
+```
 
 ## Intended Usage
 

@@ -71,7 +71,7 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
         {
             Method = request.Method.Method,
 
-            Url = request.RequestUri?.ToString() ?? string.Empty,
+            Url = RedactionUtils.RedactUrl(request.RequestUri?.ToString(), _options),
 
             StatusCode = response != null ? (int)response.StatusCode : null,
 
@@ -83,9 +83,9 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
 
             IsSuccessStatusCode = response?.IsSuccessStatusCode ?? false,
 
-            RequestHeaders = request.Headers.ToDictionary(x => x.Key, x => HeaderUtils.RedactIfSensitive(x.Key, string.Join(", ", x.Value))),
+            RequestHeaders = request.Headers.ToDictionary(x => x.Key, x => RedactionUtils.RedactHeader(x.Key, string.Join(", ", x.Value), _options)),
 
-            ResponseHeaders = response != null ? response.Headers.ToDictionary(x => x.Key, x => HeaderUtils.RedactIfSensitive(x.Key, string.Join(", ", x.Value))) : []
+            ResponseHeaders = response != null ? response.Headers.ToDictionary(x => x.Key, x => RedactionUtils.RedactHeader(x.Key, string.Join(", ", x.Value), _options)) : []
         };
 
         if (request.Content != null)
@@ -96,7 +96,9 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
             {
                 var body = await request.Content.ReadAsStringAsync();
 
-                outgoing.RequestBody = JsonUtils.Format(HttpContentUtils.Trim(body, _options.MaxBodyCaptureSizeBytes));
+                outgoing.RequestBody = JsonUtils.Format(RedactionUtils.RedactJsonFields(
+                    HttpContentUtils.Trim(body, _options.MaxBodyCaptureSizeBytes),
+                    _options));
             }
         }
 
@@ -108,7 +110,9 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
             {
                 var body = await response.Content.ReadAsStringAsync();
 
-                outgoing.ResponseBody = JsonUtils.Format(HttpContentUtils.Trim(body, _options.MaxBodyCaptureSizeBytes));
+                outgoing.ResponseBody = JsonUtils.Format(RedactionUtils.RedactJsonFields(
+                    HttpContentUtils.Trim(body, _options.MaxBodyCaptureSizeBytes),
+                    _options));
             }
         }
 
