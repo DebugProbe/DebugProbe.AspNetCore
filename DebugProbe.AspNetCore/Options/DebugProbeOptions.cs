@@ -33,4 +33,29 @@ public class DebugProbeOptions
     /// Additional request paths to ignore.
     /// </summary>
     public string[] IgnorePaths { get; set; } = [];
+
+    /// <summary>
+    /// Header names whose values should be redacted before traces are stored.
+    /// </summary>
+    public string[] RedactedHeaders { get; set; } =
+    [
+        "Authorization",
+        "Cookie",
+        "Set-Cookie"
+    ];
+
+    /// <summary>
+    /// Query parameter names whose values should be redacted before traces are stored.
+    /// </summary>
+    public string[] RedactedQueryParameters { get; set; } = [];
+
+    /// <summary>
+    /// JSON property names whose values should be redacted before traces are stored.
+    /// </summary>
+    public string[] RedactedJsonFields { get; set; } = [];
+
+    /// <summary>
+    /// Value used when sensitive data is redacted.
+    /// </summary>
+    public string RedactionText { get; set; } = "[REDACTED]";
 }

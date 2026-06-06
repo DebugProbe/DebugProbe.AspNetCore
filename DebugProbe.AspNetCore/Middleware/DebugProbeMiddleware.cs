@@ -118,7 +118,7 @@ public class DebugProbeMiddleware
 
             entry.Path = context.Request.Path;
 
-            entry.Query = context.Request.QueryString.ToString();
+            entry.Query = RedactionUtils.RedactQueryString(context.Request.QueryString.ToString(), _options);
 
             entry.StatusCode = statusCode;
 
@@ -133,20 +133,26 @@ public class DebugProbeMiddleware
             entry.RequestHeaders =
                 context.Request.Headers.ToDictionary(
                     x => x.Key,
-                    x => HeaderUtils.RedactIfSensitive(x.Key, x.Value.ToString()));
+                    x => RedactionUtils.RedactHeader(x.Key, x.Value.ToString(), _options));
 
             entry.RequestUrl =
-                $"{context.Request.Scheme}://{context.Request.Host}" +
-                $"{context.Request.Path}{context.Request.QueryString}";
+                RedactionUtils.RedactUrl(
+                    $"{context.Request.Scheme}://{context.Request.Host}" +
+                    $"{context.Request.Path}{context.Request.QueryString}",
+                    _options);
 
-            entry.RequestBody = HttpContentUtils.Trim(requestBody, maxBodySize);
+            entry.RequestBody = RedactionUtils.RedactJsonFields(
+                HttpContentUtils.Trim(requestBody, maxBodySize),
+                _options);
 
-            entry.ResponseBody = HttpContentUtils.Trim(responseBody, maxBodySize);
+            entry.ResponseBody = RedactionUtils.RedactJsonFields(
+                HttpContentUtils.Trim(responseBody, maxBodySize),
+                _options);
 
             entry.ResponseHeaders =
                 context.Response.Headers.ToDictionary(
                     x => x.Key,
-                    x => HeaderUtils.RedactIfSensitive(x.Key, x.Value.ToString()));
+                    x => RedactionUtils.RedactHeader(x.Key, x.Value.ToString(), _options));
 
             store.Add(entry);
         }
