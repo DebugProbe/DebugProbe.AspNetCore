@@ -8,7 +8,7 @@
 		<NoWarn>1591</NoWarn>
 
 		<PackageId>DebugProbe.AspNetCore</PackageId>
-		<Version>1.6.1</Version>
+		<Version>1.6.2</Version>
 
 		<Authors>Georgi Hristov</Authors>
 
@@ -17,7 +17,7 @@
 		<PackageTags>aspnetcore;debugging;http;middleware;diagnostics;tracing;observability;api-debugging;developer-tools;trace-comparison;environment-comparison</PackageTags>
 
 		<PackageReleaseNotes>
-			Adds trace comparison across environments, improved DebugProbe dashboard workflows, and support for comparing request and response differences between captured API runs.
+			Adds configurable sensitive data redaction for headers, query parameters, and JSON body fields. Improves dashboard handling of long request paths, enables local compare targets by default in Development, and introduces AllowUiInProduction to disable DebugProbe UI endpoints in Production unless explicitly enabled.
 		</PackageReleaseNotes>
 		
 		<PackageIcon>icon.png</PackageIcon>
