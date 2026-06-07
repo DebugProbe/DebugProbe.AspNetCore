@@ -16,6 +16,7 @@ public class DebugProbeOptionsTests
         Assert.Equal(32, options.MaxBodyCaptureSizeKb);
         Assert.Null(options.AllowLocalCompareTargets);
         Assert.False(options.AllowUiInProduction);
+        Assert.True(options.CaptureOutgoingHttpClientRequests);
         Assert.Empty(options.IgnorePaths);
         Assert.Equal(["Authorization", "Cookie", "Set-Cookie"], options.RedactedHeaders);
         Assert.Empty(options.RedactedQueryParameters);
@@ -34,6 +35,7 @@ public class DebugProbeOptionsTests
             options.MaxBodyCaptureSizeKb = 4;
             options.AllowLocalCompareTargets = true;
             options.IgnorePaths = ["/health"];
+            options.CaptureOutgoingHttpClientRequests = false;
             options.RedactedHeaders = ["X-Api-Key"];
             options.RedactedQueryParameters = ["token"];
             options.RedactedJsonFields = ["password"];
@@ -48,6 +50,7 @@ public class DebugProbeOptionsTests
         Assert.Equal(4, options.MaxBodyCaptureSizeKb);
         Assert.True(options.AllowLocalCompareTargets);
         Assert.Equal(["/health"], options.IgnorePaths);
+        Assert.False(options.CaptureOutgoingHttpClientRequests);
         Assert.Equal(["X-Api-Key"], options.RedactedHeaders);
         Assert.Equal(["token"], options.RedactedQueryParameters);
         Assert.Equal(["password"], options.RedactedJsonFields);

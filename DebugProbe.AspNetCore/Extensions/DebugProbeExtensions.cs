@@ -43,15 +43,18 @@ public static class DebugProbeExtensions
 
         services.AddHttpClient();
 
-        services.AddTransient<DebugProbeHttpClientHandler>();
-
-        services.ConfigureAll<HttpClientFactoryOptions>(options =>
+        if (options.CaptureOutgoingHttpClientRequests)
         {
-            options.HttpMessageHandlerBuilderActions.Add(builder =>
+            services.AddTransient<DebugProbeHttpClientHandler>();
+
+            services.ConfigureAll<HttpClientFactoryOptions>(httpClientOptions =>
             {
-                builder.AdditionalHandlers.Add(builder.Services.GetRequiredService<DebugProbeHttpClientHandler>());
+                httpClientOptions.HttpMessageHandlerBuilderActions.Add(builder =>
+                {
+                    builder.AdditionalHandlers.Add(builder.Services.GetRequiredService<DebugProbeHttpClientHandler>());
+                });
             });
-        });
+        }
 
         return services;
     }
