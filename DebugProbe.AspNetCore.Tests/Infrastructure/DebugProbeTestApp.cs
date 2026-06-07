@@ -32,7 +32,8 @@ internal sealed class DebugProbeTestApp : IAsyncDisposable
     public static async Task<DebugProbeTestApp> CreateAsync(
         Action<IEndpointRouteBuilder> mapEndpoints,
         Action<DebugProbeOptions>? configureOptions = null,
-        Action<IApplicationBuilder>? configureAfterDebugProbe = null)
+        Action<IApplicationBuilder>? configureAfterDebugProbe = null,
+        Action<IServiceCollection>? configureServices = null)
     {
         var host = await new HostBuilder()
             .ConfigureWebHost(webHost =>
@@ -42,6 +43,7 @@ internal sealed class DebugProbeTestApp : IAsyncDisposable
                 {
                     services.AddRouting();
                     services.AddDebugProbe(configureOptions);
+                    configureServices?.Invoke(services);
                 });
                 webHost.Configure(app =>
                 {

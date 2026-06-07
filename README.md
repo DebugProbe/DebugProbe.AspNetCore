@@ -48,6 +48,8 @@ builder.Services.AddDebugProbe(options =>
 
     options.AllowUiInProduction = false;
 
+    options.CaptureOutgoingHttpClientRequests = true;
+
     options.IgnorePaths =
     [
         "/api/auth/login",
@@ -89,7 +91,7 @@ app.UseDebugProbe();
 - Configurable body capture limits
 - Ignored path configuration for noisy or sensitive endpoints
 - Configurable redaction for sensitive headers, query parameters, and JSON fields
-- Outgoing `HttpClient` request tracing
+- Optional outgoing `HttpClient` request tracing
 
 ## Trace Compare
 

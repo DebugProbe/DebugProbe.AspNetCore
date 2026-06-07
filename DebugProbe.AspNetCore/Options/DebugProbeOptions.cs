@@ -30,6 +30,12 @@ public class DebugProbeOptions
     public bool AllowUiInProduction { get; set; }
 
     /// <summary>
+    /// Captures outgoing requests made through IHttpClientFactory.
+    /// Defaults to true.
+    /// </summary>
+    public bool CaptureOutgoingHttpClientRequests { get; set; } = true;
+
+    /// <summary>
     /// Additional request paths to ignore.
     /// </summary>
     public string[] IgnorePaths { get; set; } = [];
