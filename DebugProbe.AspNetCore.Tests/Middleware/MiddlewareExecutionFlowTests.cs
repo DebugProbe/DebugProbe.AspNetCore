@@ -42,6 +42,24 @@ public class MiddlewareExecutionFlowTests
         Assert.Empty(app.Store.GetAll());
     }
 
+    [Theory]
+    [InlineData("/health")]
+    [InlineData("/healthz")]
+    [InlineData("/ready")]
+    [InlineData("/live")]
+    public async Task Default_health_probe_paths_are_skipped(string path)
+    {
+        await using var app = await DebugProbeTestApp.CreateAsync(endpoints =>
+        {
+            endpoints.MapGet(path, () => Results.Ok());
+        });
+
+        var response = await app.Client.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Empty(app.Store.GetAll());
+    }
+
     [Fact]
     public async Task Debug_paths_are_skipped()
     {

@@ -34,6 +34,7 @@ http://localhost:{port}/debug
 ```
 
 In Production, DebugProbe captures traces but does not register UI endpoints unless explicitly enabled.
+DebugProbe does not require authentication by default.
 
 ## Optional Configuration
 
@@ -79,6 +80,27 @@ builder.Services.AddDebugProbe(options =>
 app.UseDebugProbe();
 ```
 
+To protect DebugProbe endpoints, configure an ASP.NET Core authorization policy and require it when DebugProbe is registered:
+
+```csharp
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("DebugProbePolicy", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole("Admin");
+    });
+});
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.UseDebugProbe(options =>
+{
+    options.AuthorizationPolicy = "DebugProbePolicy";
+});
+```
+
 ## Features
 
 - Request inspection
@@ -91,6 +113,7 @@ app.UseDebugProbe();
 - Configurable body capture limits
 - Ignored path configuration for noisy or sensitive endpoints
 - Configurable redaction for sensitive headers, query parameters, and JSON fields
+- Optional ASP.NET Core authorization policy protection for DebugProbe endpoints
 - Optional outgoing `HttpClient` request tracing
 
 ## Trace Compare
@@ -116,6 +139,27 @@ DebugProbe UI endpoints are disabled by default in Production. Capture and trace
 builder.Services.AddDebugProbe(options =>
 {
     options.AllowUiInProduction = true;
+});
+```
+
+DebugProbe does not require authentication by default. If you expose DebugProbe outside local development, configure an ASP.NET Core authorization policy and require it for DebugProbe endpoints:
+
+```csharp
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("DebugProbePolicy", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole("Admin");
+    });
+});
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.UseDebugProbe(options =>
+{
+    options.AuthorizationPolicy = "DebugProbePolicy";
 });
 ```
 

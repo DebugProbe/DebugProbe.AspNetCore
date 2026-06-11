@@ -34,6 +34,16 @@ By default:
 - Data is not persisted externally
 - Stored entries are cleared when the application stops
 - Only a limited number of requests are retained
+- DebugProbe endpoints do not require authentication unless an authorization policy is configured
+
+When exposing DebugProbe outside local development, prefer protecting the endpoints with an ASP.NET Core authorization policy:
+
+```csharp
+app.UseDebugProbe(options =>
+{
+    options.AuthorizationPolicy = "DebugProbePolicy";
+});
+```
 
 Avoid exposing DebugProbe endpoints publicly or using the package in production environments without proper security review and access restrictions.
 

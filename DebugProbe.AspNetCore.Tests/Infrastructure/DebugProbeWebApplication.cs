@@ -28,7 +28,10 @@ internal sealed class DebugProbeWebApplication : IAsyncDisposable
     public static async Task<DebugProbeWebApplication> CreateAsync(
         string environmentName,
         Action<IEndpointRouteBuilder>? mapEndpoints = null,
-        Action<DebugProbeOptions>? configureOptions = null)
+        Action<DebugProbeOptions>? configureOptions = null,
+        Action<IServiceCollection>? configureServices = null,
+        Action<WebApplication>? configureBeforeDebugProbe = null,
+        Action<DebugProbeOptions>? configureUseDebugProbe = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -39,11 +42,13 @@ internal sealed class DebugProbeWebApplication : IAsyncDisposable
 
         builder.Services.AddRouting();
         builder.Services.AddDebugProbe(configureOptions);
+        configureServices?.Invoke(builder.Services);
 
         var app = builder.Build();
 
         app.UseRouting();
-        app.UseDebugProbe();
+        configureBeforeDebugProbe?.Invoke(app);
+        app.UseDebugProbe(configureUseDebugProbe);
 
         mapEndpoints?.Invoke(app);
 

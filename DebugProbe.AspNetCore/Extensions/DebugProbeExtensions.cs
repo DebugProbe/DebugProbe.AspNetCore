@@ -8,6 +8,7 @@ using DebugProbe.AspNetCore.Middleware;
 using DebugProbe.AspNetCore.Models;
 using DebugProbe.AspNetCore.Options;
 using DebugProbe.AspNetCore.Storage;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -64,8 +65,18 @@ public static class DebugProbeExtensions
     /// </summary>
     public static IApplicationBuilder UseDebugProbe(this IApplicationBuilder app)
     {
+        return app.UseDebugProbe(configure: null);
+    }
+
+    /// <summary>
+    /// Registers DebugProbe services and configures runtime endpoint options.
+    /// </summary>
+    public static IApplicationBuilder UseDebugProbe(this IApplicationBuilder app, Action<DebugProbeOptions>? configure)
+    {
         var options = app.ApplicationServices.GetRequiredService<DebugProbeOptions>();
         var environment = app.ApplicationServices.GetRequiredService<IHostEnvironment>();
+
+        configure?.Invoke(options);
 
         options.AllowLocalCompareTargets ??= environment.IsDevelopment();
 
@@ -76,7 +87,7 @@ public static class DebugProbeExtensions
         {
             if (ShouldMapUiEndpoints(environment, options))
             {
-                webApp.MapGet("/debug", async (HttpContext ctx, DebugEntryStore store) =>
+                RequireDebugAuthorization(webApp.MapGet("/debug", async (HttpContext ctx, DebugEntryStore store) =>
                 {
                     var items = store.GetAll()
                         .OrderByDescending(x => x.Timestamp)
@@ -87,9 +98,9 @@ public static class DebugProbeExtensions
 
                     await ctx.Response.WriteAsync(html);
 
-                }).ExcludeFromDescription();
+                }).ExcludeFromDescription(), options);
 
-                webApp.MapGet("/debug/{id}", async (HttpContext ctx, string id, DebugEntryStore store) =>
+                RequireDebugAuthorization(webApp.MapGet("/debug/{id}", async (HttpContext ctx, string id, DebugEntryStore store) =>
                 {
                     var item = store.Get(id);
 
@@ -108,9 +119,9 @@ public static class DebugProbeExtensions
 
                     await ctx.Response.WriteAsync(html);
 
-                }).ExcludeFromDescription();
+                }).ExcludeFromDescription(), options);
 
-                webApp.MapGet("/compare", (string? baseUrl, string? traceId, string? localTraceId) =>
+                RequireDebugAuthorization(webApp.MapGet("/compare", (string? baseUrl, string? traceId, string? localTraceId) =>
                 {
                     if (string.IsNullOrWhiteSpace(localTraceId))
                     {
@@ -121,9 +132,9 @@ public static class DebugProbeExtensions
 
                     return Results.Content(html, "text/html");
 
-                }).ExcludeFromDescription();
+                }).ExcludeFromDescription(), options);
 
-                webApp.MapGet("/debug/js/{file}", (string file) =>
+                RequireDebugAuthorization(webApp.MapGet("/debug/js/{file}", (string file) =>
                 {
                     if (!EmbeddedResources.JavaScript.TryGetValue(file, out var content))
                     {
@@ -132,26 +143,26 @@ public static class DebugProbeExtensions
 
                     return Results.Text(content, "application/javascript");
 
-                }).ExcludeFromDescription();
+                }).ExcludeFromDescription(), options);
 
-                webApp.MapPost("/debug/clear", (DebugEntryStore store) =>
+                RequireDebugAuthorization(webApp.MapPost("/debug/clear", (DebugEntryStore store) =>
                 {
                     store.Clear();
 
                     return Results.Ok();
 
-                }).ExcludeFromDescription();
+                }).ExcludeFromDescription(), options);
 
-                webApp.Map("/debug/logo.png", ctx =>
+                RequireDebugAuthorization(webApp.Map("/debug/logo.png", ctx =>
                     EmbeddedAssetWriter.WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.images.debugprobe_logo_white_transparent.png", "image/png")
-                ).ExcludeFromDescription();
+                ).ExcludeFromDescription(), options);
 
-                webApp.Map("/debug/favicon.ico", ctx =>
+                RequireDebugAuthorization(webApp.Map("/debug/favicon.ico", ctx =>
                     EmbeddedAssetWriter.WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.images.debugprobe_favicon.ico", "image/x-icon")
-                ).ExcludeFromDescription();
+                ).ExcludeFromDescription(), options);
             }
 
-            webApp.MapGet("/debug/compare/{id}", async (string id, string baseUrl, string remoteTraceId,
+            RequireDebugAuthorization(webApp.MapGet("/debug/compare/{id}", async (string id, string baseUrl, string remoteTraceId,
                 DebugEntryStore store,
                 DebugProbeOptions options) =>
             {
@@ -228,21 +239,21 @@ public static class DebugProbeExtensions
                     diffs = diff
                 });
 
-            }).ExcludeFromDescription();
+            }).ExcludeFromDescription(), options);
 
-            webApp.MapGet("/debug/environment", (DebugEntryStore store) =>
+            RequireDebugAuthorization(webApp.MapGet("/debug/environment", (DebugEntryStore store) =>
             {
                 return Results.Ok(store.Environment);
 
-            }).ExcludeFromDescription();
+            }).ExcludeFromDescription(), options);
 
-            webApp.MapGet("/debug/json/{id}", (string id, DebugEntryStore store) =>
+            RequireDebugAuthorization(webApp.MapGet("/debug/json/{id}", (string id, DebugEntryStore store) =>
             {
                 var item = store.Get(id);
 
                 return item is null ? Results.NotFound() : Results.Json(item);
 
-            }).ExcludeFromDescription();
+            }).ExcludeFromDescription(), options);
 
 
         }
@@ -253,5 +264,13 @@ public static class DebugProbeExtensions
     private static bool ShouldMapUiEndpoints(IHostEnvironment environment, DebugProbeOptions options)
     {
         return !environment.IsProduction() || options.AllowUiInProduction;
+    }
+
+    private static void RequireDebugAuthorization(IEndpointConventionBuilder endpoint, DebugProbeOptions options)
+    {
+        if (!string.IsNullOrWhiteSpace(options.AuthorizationPolicy))
+        {
+            endpoint.RequireAuthorization(options.AuthorizationPolicy);
+        }
     }
 }

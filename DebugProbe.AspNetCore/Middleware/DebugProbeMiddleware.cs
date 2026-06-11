@@ -23,6 +23,10 @@ public class DebugProbeMiddleware
         "/debug",
         "/compare",
         "/swagger",
+        "/health",
+        "/healthz",
+        "/ready",
+        "/live",
         "/.well-known",
 
         // browser noise

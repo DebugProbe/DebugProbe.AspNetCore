@@ -30,6 +30,12 @@ public class DebugProbeOptions
     public bool AllowUiInProduction { get; set; }
 
     /// <summary>
+    /// Optional ASP.NET Core authorization policy required for DebugProbe endpoints.
+    /// When not configured, DebugProbe endpoints do not require authorization.
+    /// </summary>
+    public string? AuthorizationPolicy { get; set; }
+
+    /// <summary>
     /// Captures outgoing requests made through IHttpClientFactory.
     /// Defaults to true.
     /// </summary>
