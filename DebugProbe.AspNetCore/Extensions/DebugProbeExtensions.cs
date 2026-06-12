@@ -36,6 +36,11 @@ public static class DebugProbeExtensions
 
         configure?.Invoke(options);
 
+        var validator = new DebugProbeOptionsValidator();
+        var result = validator.Validate(null, options);
+        if (result.Failed)
+            throw new InvalidOperationException(result.FailureMessage);
+
         services.AddSingleton(options);
 
         services.AddSingleton<DebugEntryStore>();

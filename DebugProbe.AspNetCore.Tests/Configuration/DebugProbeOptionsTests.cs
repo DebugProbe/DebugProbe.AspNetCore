@@ -60,4 +60,31 @@ public class DebugProbeOptionsTests
         Assert.Equal("***", options.RedactionText);
         Assert.NotNull(store.Environment);
     }
+    [Fact]
+    public void MaxEntries_zero_throws_InvalidOperationException()
+    {
+        var services = new ServiceCollection();
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            services.AddDebugProbe(options =>
+            {
+                options.MaxEntries = 0;
+            }));
+
+        Assert.Contains("MaxEntries", exception.Message);
+    }
+
+    [Fact]
+    public void MaxEntries_negative_throws_InvalidOperationException()
+    {
+        var services = new ServiceCollection();
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            services.AddDebugProbe(options =>
+            {
+                options.MaxEntries = -1;
+            }));
+
+        Assert.Contains("MaxEntries", exception.Message);
+    }
 }
