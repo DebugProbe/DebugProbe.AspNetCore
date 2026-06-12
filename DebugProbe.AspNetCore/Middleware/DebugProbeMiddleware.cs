@@ -162,7 +162,9 @@ public class DebugProbeMiddleware
         return DefaultIgnorePaths
             .Concat(_options.IgnorePaths)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Any(ignorePath => path.StartsWith(ignorePath, StringComparison.OrdinalIgnoreCase));
+            .Any(ignorePath => 
+                path.Equals(ignorePath, StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith(ignorePath.TrimEnd('/') + "/", StringComparison.OrdinalIgnoreCase));
     }
 
     private static async Task<string> CaptureRequestBodyAsync(HttpContext context, int maxBodySize)

@@ -41,6 +41,17 @@ public class MiddlewareExecutionFlowTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Empty(app.Store.GetAll());
     }
+    [Fact]
+    public async Task Similar_paths_are_not_skipped()
+    {
+        await using var app = await DebugProbeTestApp.CreateAsync(
+            endpoints => endpoints.MapGet("/healthcare", () => Results.Ok()),
+            options => options.IgnorePaths = ["/health"]);
+
+        var response = await app.Client.GetAsync("/healthcare");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Single(app.Store.GetAll());
+    }
 
     [Theory]
     [InlineData("/health")]
