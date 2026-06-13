@@ -8,7 +8,7 @@
 		<NoWarn>1591</NoWarn>
 
 		<PackageId>DebugProbe.AspNetCore</PackageId>
-		<Version>1.6.3</Version>
+		<Version>1.6.4</Version>
 
 		<Authors>Georgi Hristov</Authors>
 
@@ -17,7 +17,7 @@
 		<PackageTags>aspnetcore;debugging;http;middleware;diagnostics;tracing;observability;api-debugging;developer-tools;trace-comparison;environment-comparison</PackageTags>
 
 		<PackageReleaseNotes>
-			Adds optional ASP.NET Core authorization policy support for DebugProbe endpoints through DebugProbeOptions.AuthorizationPolicy and the new UseDebugProbe(options =&gt; ...) overload. DebugProbe endpoints remain unsecured by default for backward compatibility, but can now be protected with existing authentication, roles, claims, or custom authorization policies. Also ignores common health/readiness probe paths by default (/health, /healthz, /ready, /live) to reduce dashboard noise and preserve useful trace history. Updates README and security guidance with policy-protected endpoint examples.
+			Fixes MaxEntries validation to prevent infinite loops caused by invalid configuration values. Improves ignore path matching to prevent false positives, ensuring paths such as /healthcare are no longer ignored when /health is configured. Includes internal refactoring and code cleanup to improve readability, reduce duplication, and enhance maintainability. Adds test coverage for configuration validation and ignore path matching scenarios.
 		</PackageReleaseNotes>
 		
 		<PackageIcon>icon.png</PackageIcon>
