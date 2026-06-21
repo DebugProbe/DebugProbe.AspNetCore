@@ -125,7 +125,7 @@ public class DebugProbeMiddleware
 
             entry.RequestSize = context.Request.ContentLength ?? Encoding.UTF8.GetByteCount(requestBody);
 
-            entry.ResponseSize = Encoding.UTF8.GetByteCount(responseBody);
+            entry.ResponseSize = responseCapture.TotalBytesWritten;
 
             entry.RequestHeaders =
                 context.Request.Headers.ToDictionary(

@@ -41,6 +41,7 @@ public class ResponseBodyCaptureTests
         await app.Client.GetAsync("/large");
 
         Assert.Equal(body, app.SingleEntry.ResponseBody);
+        Assert.Equal(body.Length, app.SingleEntry.ResponseSize);
     }
 
     [Fact]
@@ -54,6 +55,7 @@ public class ResponseBodyCaptureTests
         await app.Client.GetAsync("/binary");
 
         Assert.Equal("[Body not captured: non-text content]", app.SingleEntry.ResponseBody);
+        Assert.Equal(4, app.SingleEntry.ResponseSize);
     }
 
     [Fact]
@@ -69,5 +71,6 @@ public class ResponseBodyCaptureTests
         var entry = app.SingleEntry;
         Assert.Equal(body, await response.Content.ReadAsStringAsync());
         Assert.Equal("[Body too large]", entry.ResponseBody);
+        Assert.Equal(body.Length, entry.ResponseSize);
     }
 }
