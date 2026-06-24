@@ -1,4 +1,4 @@
-﻿namespace DebugProbe.AspNetCore.Options;
+namespace DebugProbe.AspNetCore.Options;
 
 /// <summary>
 /// Configuration options for DebugProbe.
@@ -13,7 +13,18 @@ public class DebugProbeOptions
     /// <summary>
     /// Maximum captured request or response body size in kilobytes.
     /// </summary>
-    public int MaxBodyCaptureSizeKb { get; set; } = 32;
+    private int _maxBodyCaptureSizeKb = 32;
+    public int MaxBodyCaptureSizeKb
+    {
+        get => _maxBodyCaptureSizeKb;
+        set
+        {
+            if (value < 0)
+                throw new ArgumentOutOfRangeException(nameof(MaxBodyCaptureSizeKb),
+                    "MaxBodyCaptureSizeKb must be 0 or greater. Use 0 to disable body capture.");
+            _maxBodyCaptureSizeKb = value;
+        }
+    }
 
     internal int MaxBodyCaptureSizeBytes => MaxBodyCaptureSizeKb * 1024;
 
