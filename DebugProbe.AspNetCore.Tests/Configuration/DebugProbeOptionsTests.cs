@@ -87,4 +87,21 @@ public class DebugProbeOptionsTests
 
         Assert.Contains("MaxEntries", exception.Message);
     }
+
+    [Fact]
+    public void MaxBodyCaptureSizeKb_negative_throws_ArgumentOutOfRangeException()
+    {
+        var options = new DebugProbeOptions();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxBodyCaptureSizeKb = -1);
+    }
+
+    [Fact]
+    public void MaxBodyCaptureSizeKb_zero_is_valid()
+    {
+        var options = new DebugProbeOptions();
+        options.MaxBodyCaptureSizeKb = 0;
+
+        Assert.Equal(0, options.MaxBodyCaptureSizeKb);
+    }
 }
