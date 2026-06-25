@@ -108,15 +108,14 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
             return string.Empty;
         }
 
-        // Buffer the content into memory so the original HttpContent remains readable
-        // for the actual outgoing HTTP request.
-        await content.LoadIntoBufferAsync();
+        if (_options.MaxBodyCaptureSizeBytes <= 0)
+            return null;
 
         var limit = _options.MaxBodyCaptureSizeBytes;
         var buffer = new byte[limit + 1];
         var totalRead = 0;
 
-        using var stream = await content.ReadAsStreamAsync();
+        var stream = await content.ReadAsStreamAsync();
 
         int bytesRead;
         while (totalRead < buffer.Length &&
