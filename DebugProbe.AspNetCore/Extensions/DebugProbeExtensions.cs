@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using DebugProbe.AspNetCore.Handlers;
 using DebugProbe.AspNetCore.Internal.Compare;
 using DebugProbe.AspNetCore.Internal.Rendering;
@@ -90,9 +90,11 @@ public static class DebugProbeExtensions
 
         if (app is WebApplication webApp)
         {
+            var prefix = options.RoutePrefix;
+
             if (ShouldMapUiEndpoints(environment, options))
             {
-                RequireDebugAuthorization(webApp.MapGet("/debug", async (HttpContext ctx, DebugEntryStore store) =>
+                RequireDebugAuthorization(webApp.MapGet(prefix, async (HttpContext ctx, DebugEntryStore store) =>
                 {
                     var items = store.GetAll()
                         .OrderByDescending(x => x.Timestamp)
@@ -105,7 +107,7 @@ public static class DebugProbeExtensions
 
                 }).ExcludeFromDescription(), options);
 
-                RequireDebugAuthorization(webApp.MapGet("/debug/{id}", async (HttpContext ctx, string id, DebugEntryStore store) =>
+                RequireDebugAuthorization(webApp.MapGet($"{prefix}/{{id}}", async (HttpContext ctx, string id, DebugEntryStore store) =>
                 {
                     var item = store.Get(id);
 
@@ -139,7 +141,7 @@ public static class DebugProbeExtensions
 
                 }).ExcludeFromDescription(), options);
 
-                RequireDebugAuthorization(webApp.MapGet("/debug/js/{file}", (string file) =>
+                RequireDebugAuthorization(webApp.MapGet($"{prefix}/js/{{file}}", (string file) =>
                 {
                     if (!EmbeddedResources.JavaScript.TryGetValue(file, out var content))
                     {
@@ -150,7 +152,7 @@ public static class DebugProbeExtensions
 
                 }).ExcludeFromDescription(), options);
 
-                RequireDebugAuthorization(webApp.MapPost("/debug/clear", (DebugEntryStore store) =>
+                RequireDebugAuthorization(webApp.MapPost($"{prefix}/clear", (DebugEntryStore store) =>
                 {
                     store.Clear();
 
@@ -158,16 +160,16 @@ public static class DebugProbeExtensions
 
                 }).ExcludeFromDescription(), options);
 
-                RequireDebugAuthorization(webApp.Map("/debug/logo.png", ctx =>
+                RequireDebugAuthorization(webApp.Map($"{prefix}/logo.png", ctx =>
                     EmbeddedAssetWriter.WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.images.debugprobe_logo_white_transparent.png", "image/png")
                 ).ExcludeFromDescription(), options);
 
-                RequireDebugAuthorization(webApp.Map("/debug/favicon.ico", ctx =>
+                RequireDebugAuthorization(webApp.Map($"{prefix}/favicon.ico", ctx =>
                     EmbeddedAssetWriter.WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.images.debugprobe_favicon.ico", "image/x-icon")
                 ).ExcludeFromDescription(), options);
             }
 
-            RequireDebugAuthorization(webApp.MapGet("/debug/compare/{id}", async (string id, string baseUrl, string remoteTraceId,
+            RequireDebugAuthorization(webApp.MapGet($"{prefix}/compare/{{id}}", async (string id, string baseUrl, string remoteTraceId,
                 DebugEntryStore store,
                 DebugProbeOptions options) =>
             {
@@ -191,9 +193,9 @@ public static class DebugProbeExtensions
                     return Results.BadRequest(validation.Error);
                 }
 
-                var remoteEnvironmentUrl = new Uri(validation.BaseUri!, "/debug/environment");
+                var remoteEnvironmentUrl = new Uri(validation.BaseUri!, $"{prefix}/environment");
 
-                var remoteEntryUrl = new Uri(validation.BaseUri!, $"/debug/json/{remoteTraceId}");
+                var remoteEntryUrl = new Uri(validation.BaseUri!, $"{prefix}/json/{remoteTraceId}");
 
                 DebugEntry? remoteEntry;
                 DebugEnvironment? remoteEnvironment;
@@ -246,13 +248,13 @@ public static class DebugProbeExtensions
 
             }).ExcludeFromDescription(), options);
 
-            RequireDebugAuthorization(webApp.MapGet("/debug/environment", (DebugEntryStore store) =>
+            RequireDebugAuthorization(webApp.MapGet($"{prefix}/environment", (DebugEntryStore store) =>
             {
                 return Results.Ok(store.Environment);
 
             }).ExcludeFromDescription(), options);
 
-            RequireDebugAuthorization(webApp.MapGet("/debug/json/{id}", (string id, DebugEntryStore store) =>
+            RequireDebugAuthorization(webApp.MapGet($"{prefix}/json/{{id}}", (string id, DebugEntryStore store) =>
             {
                 var item = store.Get(id);
 

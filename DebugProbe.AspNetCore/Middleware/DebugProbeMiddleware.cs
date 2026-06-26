@@ -20,7 +20,6 @@ public class DebugProbeMiddleware
 
     private static readonly string[] DefaultIgnorePaths =
     [
-        "/debug",
         "/compare",
         "/swagger",
         "/health",
@@ -161,6 +160,7 @@ public class DebugProbeMiddleware
 
         return DefaultIgnorePaths
             .Concat(_options.IgnorePaths)
+            .Append(_options.RoutePrefix)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Any(ignorePath => 
                 path.Equals(ignorePath, StringComparison.OrdinalIgnoreCase) ||
