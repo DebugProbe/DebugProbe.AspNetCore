@@ -81,4 +81,17 @@ public class DebugProbeOptions
     /// Value used when sensitive data is redacted.
     /// </summary>
     public string RedactionText { get; set; } = "[REDACTED]";
+
+    /// <summary>
+    /// The route prefix for the DebugProbe dashboard and API endpoints.
+    /// Defaults to <c>"/debug"</c>. A leading slash is added automatically if omitted.
+    /// </summary>
+    private string _routePrefix = "/debug";
+    public string RoutePrefix
+    {
+        get => _routePrefix;
+        set => _routePrefix = string.IsNullOrWhiteSpace(value)
+            ? "/debug"
+            : "/" + value.TrimStart('/');
+    }
 }
