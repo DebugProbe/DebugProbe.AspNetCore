@@ -18,6 +18,8 @@ public class DebugProbeProductionEndpointTests
         var comparePageResponse = await app.Client.GetAsync($"/compare?localTraceId={app.SingleEntry.Id}");
         var scriptResponse = await app.Client.GetAsync("/debug/js/debugprobe-ui.js");
         var logoResponse = await app.Client.GetAsync("/debug/logo.png");
+        var environmentResponse = await app.Client.GetAsync("/debug/environment");
+        var jsonResponse = await app.Client.GetAsync($"/debug/json/{app.SingleEntry.Id}");
         var clearResponse = await app.Client.PostAsync("/debug/clear", null);
 
         Assert.Equal(HttpStatusCode.OK, capturedResponse.StatusCode);
@@ -26,6 +28,8 @@ public class DebugProbeProductionEndpointTests
         Assert.Equal(HttpStatusCode.NotFound, scriptResponse.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, logoResponse.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, clearResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, environmentResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, jsonResponse.StatusCode);
     }
 
     [Fact]
@@ -43,6 +47,8 @@ public class DebugProbeProductionEndpointTests
         var comparePageResponse = await app.Client.GetAsync($"/compare?localTraceId={app.SingleEntry.Id}");
         var scriptResponse = await app.Client.GetAsync("/debug/js/debugprobe-ui.js");
         var logoResponse = await app.Client.GetAsync("/debug/logo.png");
+        var environmentResponse = await app.Client.GetAsync("/debug/environment");
+        var jsonResponse = await app.Client.GetAsync($"/debug/json/{app.SingleEntry.Id}");
         var clearResponse = await app.Client.PostAsync("/debug/clear", null);
 
         Assert.Equal(HttpStatusCode.OK, debugResponse.StatusCode);
@@ -51,10 +57,12 @@ public class DebugProbeProductionEndpointTests
         Assert.Equal(HttpStatusCode.OK, scriptResponse.StatusCode);
         Assert.Equal(HttpStatusCode.OK, logoResponse.StatusCode);
         Assert.Equal(HttpStatusCode.OK, clearResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, environmentResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, jsonResponse.StatusCode);
     }
 
     [Fact]
-    public async Task Production_keeps_machine_readable_debug_endpoints_available_by_default()
+    public async Task Production_blocks_machine_readable_endpoints_by_default()
     {
         await using var app = await DebugProbeWebApplication.CreateAsync(
             Environments.Production,
@@ -64,8 +72,11 @@ public class DebugProbeProductionEndpointTests
 
         var environmentResponse = await app.Client.GetAsync("/debug/environment");
         var jsonResponse = await app.Client.GetAsync($"/debug/json/{app.SingleEntry.Id}");
+        var compareResponse = await app.Client.GetAsync(
+            $"/debug/compare/{app.SingleEntry.Id}?baseUrl=http://localhost&remoteTraceId={Guid.NewGuid()}");
 
-        Assert.Equal(HttpStatusCode.OK, environmentResponse.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, jsonResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, environmentResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, jsonResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, compareResponse.StatusCode);
     }
 }

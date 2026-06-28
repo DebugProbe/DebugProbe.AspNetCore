@@ -167,100 +167,100 @@ public static class DebugProbeExtensions
                 RequireDebugAuthorization(webApp.Map($"{prefix}/favicon.ico", ctx =>
                     EmbeddedAssetWriter.WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.images.debugprobe_favicon.ico", "image/x-icon")
                 ).ExcludeFromDescription(), options);
+
+                RequireDebugAuthorization(webApp.MapGet($"{prefix}/compare/{{id}}", async (string id, string baseUrl, string remoteTraceId,
+                    DebugEntryStore store,
+                    DebugProbeOptions options) =>
+                {
+                    var localEnvironment = store.Environment;
+                    var localEntry = store.Get(id);
+
+                    if (localEntry is null)
+                    {
+                        return Results.NotFound("Local trace not found");
+                    }
+
+                    if (!Guid.TryParse(remoteTraceId, out _))
+                    {
+                        return Results.BadRequest("Invalid remote trace id");
+                    }
+
+                    var validation = await CompareUrlValidator.ValidateCompareBaseUrlAsync(baseUrl, options);
+
+                    if (!validation.IsValid)
+                    {
+                        return Results.BadRequest(validation.Error);
+                    }
+
+                    var remoteEnvironmentUrl = new Uri(validation.BaseUri!, $"{prefix}/environment");
+
+                    var remoteEntryUrl = new Uri(validation.BaseUri!, $"{prefix}/json/{remoteTraceId}");
+
+                    DebugEntry? remoteEntry;
+                    DebugEnvironment? remoteEnvironment;
+
+                    try
+                    {
+                        remoteEnvironment = await Http.GetFromJsonAsync<DebugEnvironment>(remoteEnvironmentUrl);
+
+                        if (remoteEnvironment is null)
+                        {
+                            return Results.BadRequest("Failed to load remote environment");
+                        }
+
+                        remoteEntry = await Http.GetFromJsonAsync<DebugEntry>(remoteEntryUrl);
+
+                        if (remoteEntry is null)
+                        {
+                            return Results.NotFound("Remote trace not found");
+                        }
+                    }
+                    catch
+                    {
+                        return Results.BadRequest("Failed to reach remote server");
+                    }
+                   
+                    var diff = DebugEntryComparer.Compare(localEntry, remoteEntry);
+
+                    return Results.Ok(new
+                    {
+                        localTrace = localEntry,
+                        remoteTrace = remoteEntry,
+                        localEnvironment,
+                        remoteEnvironment,
+                        method = new { local = localEntry.Method, remote = remoteEntry.Method },
+                        path = new { local = localEntry.Path, remote = remoteEntry.Path },
+                        status = new { local = localEntry.StatusCode, remote = remoteEntry.StatusCode },
+
+                        requestTime = new
+                        {
+                            local = localEntry.RequestTimeUtc.ToLocalTime().ToString("HH:mm:ss"),
+                            remote = remoteEntry.RequestTimeUtc.ToLocalTime().ToString("HH:mm:ss"),
+                        },
+
+                        environment = new { local = localEnvironment.Environment, remote = remoteEnvironment?.Environment ?? "" },
+                        culture = new { local = localEnvironment.Culture, remote = remoteEnvironment?.Culture ?? "" },
+                        requestBody = new { local = localEntry.RequestBody ?? "", remote = remoteEntry.RequestBody ?? "" },
+                        responseBody = new { local = localEntry.ResponseBody ?? "", remote = remoteEntry.ResponseBody ?? "" },
+                        diffs = diff
+                    });
+
+                }).ExcludeFromDescription(), options);
+
+                RequireDebugAuthorization(webApp.MapGet($"{prefix}/environment", (DebugEntryStore store) =>
+                {
+                    return Results.Ok(store.Environment);
+
+                }).ExcludeFromDescription(), options);
+
+                RequireDebugAuthorization(webApp.MapGet($"{prefix}/json/{{id}}", (string id, DebugEntryStore store) =>
+                {
+                    var item = store.Get(id);
+
+                    return item is null ? Results.NotFound() : Results.Json(item);
+
+                }).ExcludeFromDescription(), options);
             }
-
-            RequireDebugAuthorization(webApp.MapGet($"{prefix}/compare/{{id}}", async (string id, string baseUrl, string remoteTraceId,
-                DebugEntryStore store,
-                DebugProbeOptions options) =>
-            {
-                var localEnvironment = store.Environment;
-                var localEntry = store.Get(id);
-
-                if (localEntry is null)
-                {
-                    return Results.NotFound("Local trace not found");
-                }
-
-                if (!Guid.TryParse(remoteTraceId, out _))
-                {
-                    return Results.BadRequest("Invalid remote trace id");
-                }
-
-                var validation = await CompareUrlValidator.ValidateCompareBaseUrlAsync(baseUrl, options);
-
-                if (!validation.IsValid)
-                {
-                    return Results.BadRequest(validation.Error);
-                }
-
-                var remoteEnvironmentUrl = new Uri(validation.BaseUri!, $"{prefix}/environment");
-
-                var remoteEntryUrl = new Uri(validation.BaseUri!, $"{prefix}/json/{remoteTraceId}");
-
-                DebugEntry? remoteEntry;
-                DebugEnvironment? remoteEnvironment;
-
-                try
-                {
-                    remoteEnvironment = await Http.GetFromJsonAsync<DebugEnvironment>(remoteEnvironmentUrl);
-
-                    if (remoteEnvironment is null)
-                    {
-                        return Results.BadRequest("Failed to load remote environment");
-                    }
-
-                    remoteEntry = await Http.GetFromJsonAsync<DebugEntry>(remoteEntryUrl);
-
-                    if (remoteEntry is null)
-                    {
-                        return Results.NotFound("Remote trace not found");
-                    }
-                }
-                catch
-                {
-                    return Results.BadRequest("Failed to reach remote server");
-                }
-               
-                var diff = DebugEntryComparer.Compare(localEntry, remoteEntry);
-
-                return Results.Ok(new
-                {
-                    localTrace = localEntry,
-                    remoteTrace = remoteEntry,
-                    localEnvironment,
-                    remoteEnvironment,
-                    method = new { local = localEntry.Method, remote = remoteEntry.Method },
-                    path = new { local = localEntry.Path, remote = remoteEntry.Path },
-                    status = new { local = localEntry.StatusCode, remote = remoteEntry.StatusCode },
-
-                    requestTime = new
-                    {
-                        local = localEntry.RequestTimeUtc.ToLocalTime().ToString("HH:mm:ss"),
-                        remote = remoteEntry.RequestTimeUtc.ToLocalTime().ToString("HH:mm:ss"),
-                    },
-
-                    environment = new { local = localEnvironment.Environment, remote = remoteEnvironment?.Environment ?? "" },
-                    culture = new { local = localEnvironment.Culture, remote = remoteEnvironment?.Culture ?? "" },
-                    requestBody = new { local = localEntry.RequestBody ?? "", remote = remoteEntry.RequestBody ?? "" },
-                    responseBody = new { local = localEntry.ResponseBody ?? "", remote = remoteEntry.ResponseBody ?? "" },
-                    diffs = diff
-                });
-
-            }).ExcludeFromDescription(), options);
-
-            RequireDebugAuthorization(webApp.MapGet($"{prefix}/environment", (DebugEntryStore store) =>
-            {
-                return Results.Ok(store.Environment);
-
-            }).ExcludeFromDescription(), options);
-
-            RequireDebugAuthorization(webApp.MapGet($"{prefix}/json/{{id}}", (string id, DebugEntryStore store) =>
-            {
-                var item = store.Get(id);
-
-                return item is null ? Results.NotFound() : Results.Json(item);
-
-            }).ExcludeFromDescription(), options);
 
 
         }
