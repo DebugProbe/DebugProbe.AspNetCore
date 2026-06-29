@@ -53,6 +53,29 @@ public class DebugProbeOptions
     public bool CaptureOutgoingHttpClientRequests { get; set; } = true;
 
     /// <summary>
+    /// Optional DebugProbe Server base URL used to send captured traces to a central location.
+    /// When not configured, DebugProbe stores traces locally only.
+    /// </summary>
+    public string? ServerUrl { get; set; }
+
+    /// <summary>
+    /// Optional stable application id sent to DebugProbe Server.
+    /// Defaults to the entry assembly name when not configured.
+    /// </summary>
+    public string? ApplicationId { get; set; }
+
+    /// <summary>
+    /// Optional friendly application name sent to DebugProbe Server.
+    /// Defaults to the entry assembly name when not configured.
+    /// </summary>
+    public string? ApplicationName { get; set; }
+
+    /// <summary>
+    /// Optional application instance id sent to DebugProbe Server.
+    /// </summary>
+    public string? InstanceId { get; set; }
+
+    /// <summary>
     /// Additional request paths to ignore.
     /// </summary>
     public string[] IgnorePaths { get; set; } = [];

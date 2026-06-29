@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Options;
 
 namespace DebugProbe.AspNetCore.Options;
 
@@ -15,6 +15,15 @@ internal sealed class DebugProbeOptionsValidator
                 $"DebugProbe configuration is invalid. " +
                 $"MaxEntries must be greater than or equal to 1. " +
                 $"Provided value: {options.MaxEntries}.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(options.ServerUrl) &&
+            (!Uri.TryCreate(options.ServerUrl, UriKind.Absolute, out var serverUri) ||
+             (serverUri.Scheme != Uri.UriSchemeHttp && serverUri.Scheme != Uri.UriSchemeHttps)))
+        {
+            return ValidateOptionsResult.Fail(
+                "DebugProbe configuration is invalid. " +
+                "ServerUrl must be an absolute HTTP or HTTPS URL.");
         }
 
         return ValidateOptionsResult.Success;

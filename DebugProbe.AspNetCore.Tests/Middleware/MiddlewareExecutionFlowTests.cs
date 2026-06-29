@@ -1,4 +1,5 @@
 using System.Net;
+using DebugProbe.AspNetCore.Ingestion;
 using DebugProbe.AspNetCore.Middleware;
 using DebugProbe.AspNetCore.Options;
 using DebugProbe.AspNetCore.Storage;
@@ -90,10 +91,12 @@ public class MiddlewareExecutionFlowTests
     {
         var originalBody = new MemoryStream();
         var context = CreateHttpContext(originalBody);
-        var store = new DebugEntryStore(new DebugProbeOptions());
+        var options = new DebugProbeOptions();
+        var store = new DebugEntryStore(options);
         var middleware = new DebugProbeMiddleware(
             async httpContext => await httpContext.Response.WriteAsync("ok"),
-            new DebugProbeOptions());
+            options,
+            new DebugProbeServerClient(options));
 
         await middleware.Invoke(context, store);
 
@@ -106,10 +109,12 @@ public class MiddlewareExecutionFlowTests
     {
         var originalBody = new MemoryStream();
         var context = CreateHttpContext(originalBody);
-        var store = new DebugEntryStore(new DebugProbeOptions());
+        var options = new DebugProbeOptions();
+        var store = new DebugEntryStore(options);
         var middleware = new DebugProbeMiddleware(
             _ => throw new InvalidOperationException("broken"),
-            new DebugProbeOptions());
+            options,
+            new DebugProbeServerClient(options));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => middleware.Invoke(context, store));
 
