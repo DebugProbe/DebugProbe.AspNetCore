@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using DebugProbe.AspNetCore.Ingestion;
 using DebugProbe.AspNetCore.Internal.Streams;
 using DebugProbe.AspNetCore.Internal.Utils;
 using DebugProbe.AspNetCore.Models;
@@ -41,14 +42,16 @@ public class DebugProbeMiddleware
 
     private readonly RequestDelegate _next;
     private readonly DebugProbeOptions _options;
+    private readonly DebugProbeServerClient _serverClient;
 
     /// <summary>
     /// Initializes a new instance of the middleware.
     /// </summary>
-    public DebugProbeMiddleware(RequestDelegate next, DebugProbeOptions options)
+    public DebugProbeMiddleware(RequestDelegate next, DebugProbeOptions options, DebugProbeServerClient serverClient)
     {
         _next = next;
         _options = options;
+        _serverClient = serverClient;
     }
 
     /// <summary>
@@ -151,6 +154,8 @@ public class DebugProbeMiddleware
                     x => RedactionUtils.RedactHeader(x.Key, x.Value.ToString(), _options));
 
             store.Add(entry);
+
+            _ = _serverClient.SendRequestAsync(entry, store.Environment);
         }
     }
 

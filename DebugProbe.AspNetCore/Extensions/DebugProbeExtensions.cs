@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using DebugProbe.AspNetCore.Handlers;
+using DebugProbe.AspNetCore.Ingestion;
 using DebugProbe.AspNetCore.Internal.Compare;
 using DebugProbe.AspNetCore.Internal.Rendering;
 using DebugProbe.AspNetCore.Internal.Resources;
@@ -48,6 +49,7 @@ public static class DebugProbeExtensions
         services.AddHttpContextAccessor();
 
         services.AddHttpClient();
+        services.AddSingleton<DebugProbeServerClient>();
 
         if (options.CaptureOutgoingHttpClientRequests)
         {

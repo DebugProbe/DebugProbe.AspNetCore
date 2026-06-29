@@ -10,9 +10,14 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDebugProbe(options =>
 {
-    options.MaxEntries = 10;
-    options.AllowUiInProduction = true;
+    options.MaxEntries = builder.Configuration.GetValue<int>("DebugProbe:MaxEntries");
+    options.AllowUiInProduction = builder.Configuration.GetValue<bool>("DebugProbe:AllowUiInProduction");
+    options.ServerUrl = builder.Configuration["DebugProbe:ServerUrl"];
+    options.ApplicationId = builder.Configuration["DebugProbe:ApplicationId"];
+    options.ApplicationName = builder.Configuration["DebugProbe:ApplicationName"];
+    options.InstanceId = builder.Configuration["DebugProbe:InstanceId"];
 });
+
 
 var app = builder.Build();
 
