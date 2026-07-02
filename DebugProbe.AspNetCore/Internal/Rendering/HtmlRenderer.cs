@@ -194,7 +194,10 @@ internal static class HtmlRenderer
 
     private static string BuildWaterfallSection(DebugEntry entry)
     {
-        if (entry.OutgoingRequests == null || entry.OutgoingRequests.Count == 0)
+        const double MinPercent = 0.0;
+        const double MaxPercent = 100.0;
+
+        if (entry.OutgoingRequests.Count == 0)
         {
             return string.Empty;
         }
@@ -211,8 +214,8 @@ internal static class HtmlRenderer
         {
             var startOffsetMs = (outgoing.TimestampUtc - entry.Timestamp.UtcDateTime).TotalMilliseconds - outgoing.DurationMs;
 
-            var left = Math.Clamp((startOffsetMs / totalSpan) * 100.0, 0.0, 100.0);
-            var width = Math.Clamp(((double)outgoing.DurationMs / totalSpan) * 100.0, 0.0, 100.0);
+            var left = Math.Clamp((startOffsetMs / totalSpan) * MaxPercent, MinPercent, MaxPercent);
+            var width = Math.Clamp(((double)outgoing.DurationMs / totalSpan) * MaxPercent, MinPercent, MaxPercent);
 
             var leftStr = left.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
             var widthStr = width.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
@@ -229,7 +232,7 @@ internal static class HtmlRenderer
                 <div class=""waterfall-row"">
                     <span class=""wf-label"" title=""{Encode(outgoing.Url)}"">{Encode(displayLabel)}</span>
                     <div class=""wf-track"">
-                        <div class=""{barClass}"" style=""left: {leftStr}%; width: {widthStr}%;"">{outgoing.DurationMs}ms</div>
+                        <div class=""{barClass}"" style=""left: {leftStr}%; width: {widthStr}%;"">{outgoing.DurationMs} ms</div>
                     </div>
                 </div>");
         }
