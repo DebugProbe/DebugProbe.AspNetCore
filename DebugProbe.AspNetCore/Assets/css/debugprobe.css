@@ -1,4 +1,4 @@
-﻿/* =========================
+/* =========================
    Base
 ========================= */
 
@@ -1128,3 +1128,86 @@ pre {
     background: #4a1717;
     color: #ff8a8a !important;
 }
+
+/* =========================
+   Waterfall View
+========================= */
+
+.waterfall-container {
+    margin-bottom: 12px;
+}
+
+.waterfall-container .trace-card-main {
+    padding: 12px 14px;
+}
+
+.waterfall-container .trace-card-header {
+    padding: 0 0 12px 0;
+}
+
+.waterfall-container .trace-dot {
+    background: #9b51e0;
+}
+
+.waterfall-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.waterfall-row:last-child {
+    margin-bottom: 0;
+}
+
+.wf-label {
+    flex: 0 0 200px;
+    width: 200px;
+    min-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    font-size: 12px;
+    color: #4b5563;
+}
+
+.wf-track {
+    flex: 1;
+    position: relative;
+    height: 20px;
+    background: #f3f4f6;
+    border-radius: 4px;
+}
+
+.wf-bar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #9b51e0;
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    border-radius: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 4px;
+    box-sizing: border-box;
+}
+
+.wf-bar--error {
+    background: #e74c3c;
+}
+
+@media (max-width: 640px) {
+    .wf-label {
+        flex: 0 0 100px;
+        width: 100px;
+        min-width: 100px;
+    }
+}
+
