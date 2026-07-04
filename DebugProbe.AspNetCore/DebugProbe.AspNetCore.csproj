@@ -8,7 +8,7 @@
 		<NoWarn>1591</NoWarn>
 
 		<PackageId>DebugProbe.AspNetCore</PackageId>
-		<Version>1.6.5</Version>
+		<Version>1.6.6</Version>
 
 		<Authors>Georgi Hristov</Authors>
 
@@ -17,7 +17,14 @@
 		<PackageTags>aspnetcore;debugging;http;middleware;diagnostics;tracing;observability;api-debugging;developer-tools;trace-comparison;environment-comparison</PackageTags>
 
 		<PackageReleaseNotes>
-			Fixes response size tracking to report the actual number of bytes sent to the client instead of the captured body size. Adds validation for MaxBodyCaptureSizeKb to reject negative values while allowing 0 to disable body capture. Updates Microsoft.AspNetCore.TestHost to 8.0.28 and xunit.runner.visualstudio to 3.1.5.
+			## What's New
+
+			- Added configurable RoutePrefix support for customizing DebugProbe endpoints.
+			- Fixed endpoint mapping to respect production UI configuration.
+			- Fixed outgoing HTTP body capture stream preservation.
+			- Fixed outgoing HTTP body capture to avoid reading beyond the configured limit.
+
+			Thanks to @DevSars24 for the community contributions.
 		</PackageReleaseNotes>
 		
 		<PackageIcon>icon.png</PackageIcon>
