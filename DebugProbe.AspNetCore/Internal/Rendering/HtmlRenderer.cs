@@ -99,7 +99,11 @@ internal static class HtmlRenderer
                 BuildPayloadSection("Body", res, "body")
             ]);
 
+        var waterfall = BuildWaterfallSection(x);
+
         var outgoingRequests = string.Join("", x.OutgoingRequests.Select(BuildOutgoingRequestCard));
+
+        var combinedOutgoing = waterfall + outgoingRequests;
 
         var content = EmbeddedResources.Details
             .Replace("{{method}}", Encode(x.Method))
@@ -124,9 +128,9 @@ internal static class HtmlRenderer
             .Replace("{{dateFormat}}", e.DateFormat ?? "")
             .Replace("{{assemblyVersion}}", Encode(e.AssemblyVersion))
             .Replace("{{outgoingRequests}}",
-                string.IsNullOrWhiteSpace(outgoingRequests)
+                string.IsNullOrWhiteSpace(combinedOutgoing)
                     ? "<div class='empty-state trace-empty'>No outgoing dependency calls</div>"
-                    : outgoingRequests)
+                    : combinedOutgoing)
             .Replace("{{incomingRequest}}", incomingRequest)
             .Replace("{{incomingResponse}}", incomingResponse);
 
@@ -186,6 +190,67 @@ internal static class HtmlRenderer
             statusText: request.StatusCode.HasValue ? null : "Failed",
             durationMs: request.DurationMs,
             details: details);
+    }
+
+    private static string BuildWaterfallSection(DebugEntry entry)
+    {
+        const double MinPercent = 0.0;
+        const double MaxPercent = 100.0;
+
+        if (entry.OutgoingRequests.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var totalSpan = (double)entry.DurationMs;
+        if (totalSpan <= 0)
+        {
+            totalSpan = 1.0;
+        }
+
+        var rowsHtml = new List<string>();
+
+        foreach (var outgoing in entry.OutgoingRequests)
+        {
+            var startOffsetMs = (outgoing.TimestampUtc - entry.Timestamp.UtcDateTime).TotalMilliseconds - outgoing.DurationMs;
+
+            var left = Math.Clamp((startOffsetMs / totalSpan) * MaxPercent, MinPercent, MaxPercent);
+            var width = Math.Clamp(((double)outgoing.DurationMs / totalSpan) * MaxPercent, MinPercent, MaxPercent);
+
+            var leftStr = left.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+            var widthStr = width.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+            var barClass = "wf-bar";
+            if (!outgoing.IsSuccessStatusCode || !string.IsNullOrWhiteSpace(outgoing.Exception))
+            {
+                barClass += " wf-bar--error";
+            }
+
+            var displayLabel = GetDisplayTarget(outgoing.Url);
+
+            rowsHtml.Add($@"
+                <div class=""waterfall-row"">
+                    <span class=""wf-label"" title=""{Encode(outgoing.Url)}"">{Encode(displayLabel)}</span>
+                    <div class=""wf-track"">
+                        <div class=""{barClass}"" style=""left: {leftStr}%; width: {widthStr}%;"">{outgoing.DurationMs} ms</div>
+                    </div>
+                </div>");
+        }
+
+        return $@"
+        <article class=""trace-card waterfall-container"">
+            <div class=""trace-card-main"">
+                <div class=""trace-card-header"">
+                    <div class=""trace-card-title"">
+                        <span class=""trace-dot"" aria-hidden=""true""></span>
+                        <span class=""trace-label"">Waterfall Timeline</span>
+                    </div>
+                </div>
+                <div class=""trace-details"">
+                    {string.Join("", rowsHtml)}
+                </div>
+            </div>
+        </article>";
     }
 
     private static string BuildTraceCard(string label, string method, string target, string classes, IEnumerable<string> details, int? statusCode = null, string? statusText = null, long? durationMs = null)
