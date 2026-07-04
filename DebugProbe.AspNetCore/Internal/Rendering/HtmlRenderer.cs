@@ -208,6 +208,23 @@ internal static class HtmlRenderer
             totalSpan = 1.0;
         }
 
+        var ticksHtml = new List<string>();
+        for (int i = 0; i <= 4; i++)
+        {
+            var tickVal = (totalSpan * i) / 4.0;
+            var tickLeft = i * 25;
+            var tickValStr = tickVal.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+            ticksHtml.Add($@"<div class=""wf-ruler-tick"" style=""left: {tickLeft}%;"">{tickValStr} ms</div>");
+        }
+
+        var rulerHtml = $@"
+                <div class=""waterfall-ruler-row"">
+                    <div class=""wf-ruler-label-placeholder""></div>
+                    <div class=""wf-ruler-ticks"">
+                        {string.Join("", ticksHtml)}
+                    </div>
+                </div>";
+
         var rowsHtml = new List<string>();
 
         foreach (var outgoing in entry.OutgoingRequests)
@@ -228,11 +245,20 @@ internal static class HtmlRenderer
 
             var displayLabel = GetDisplayTarget(outgoing.Url);
 
+            var dataStart = Encode(Math.Max(0, startOffsetMs).ToString("0", System.Globalization.CultureInfo.InvariantCulture));
+            var dataDuration = Encode(outgoing.DurationMs.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            var dataUrl = Encode(displayLabel);
+            var dataStatus = Encode(outgoing.StatusCode.HasValue ? outgoing.StatusCode.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "Failed");
+
             rowsHtml.Add($@"
                 <div class=""waterfall-row"">
                     <span class=""wf-label"" title=""{Encode(outgoing.Url)}"">{Encode(displayLabel)}</span>
                     <div class=""wf-track"">
-                        <div class=""{barClass}"" style=""left: {leftStr}%; width: {widthStr}%;"">{outgoing.DurationMs} ms</div>
+                        <div class=""{barClass}"" style=""left: {leftStr}%; width: {widthStr}%;""
+                             data-wf-start=""{dataStart}""
+                             data-wf-duration=""{dataDuration}""
+                             data-wf-url=""{dataUrl}""
+                             data-wf-status=""{dataStatus}"">{outgoing.DurationMs} ms</div>
                     </div>
                 </div>");
         }
@@ -247,6 +273,7 @@ internal static class HtmlRenderer
                     </div>
                 </div>
                 <div class=""trace-details"">
+                    {rulerHtml}
                     {string.Join("", rowsHtml)}
                 </div>
             </div>
