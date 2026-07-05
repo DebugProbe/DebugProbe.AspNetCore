@@ -111,6 +111,61 @@ public class HtmlRendererTests
         Assert.Contains("/orders/&lt;bad&gt;", html);
     }
 
+    [Fact]
+    public void Details_page_renders_waterfall_section_with_ruler_and_tooltips_when_outgoing_requests_exist()
+    {
+        var entry = CreateEntry();
+        entry.DurationMs = 500;
+        
+        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        {
+            Method = "GET",
+            Url = "https://external-api.test/v1/users?id=123",
+            StatusCode = 200,
+            DurationMs = 150,
+            TimestampUtc = entry.Timestamp.UtcDateTime.AddMilliseconds(200), // starts at 50ms offset (200 - 150)
+            IsSuccessStatusCode = true
+        });
+
+        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        {
+            Method = "POST",
+            Url = "https://untrusted-api.test/v1/search?query=a&b=%3Cscript%3E",
+            StatusCode = 500,
+            DurationMs = 80,
+            TimestampUtc = entry.Timestamp.UtcDateTime.AddMilliseconds(400), // starts at 320ms offset (400 - 80)
+            IsSuccessStatusCode = false
+        });
+
+        var html = HtmlRenderer.RenderDetailsPage(
+            entry,
+            CreateEnvironment(),
+            "{}",
+            "{}");
+
+        // Verify Ruler ticks exist
+        Assert.Contains("waterfall-ruler-row", html);
+        Assert.Contains("wf-ruler-ticks", html);
+        Assert.Contains("0 ms", html);
+        Assert.Contains("125 ms", html);
+        Assert.Contains("250 ms", html);
+        Assert.Contains("375 ms", html);
+        Assert.Contains("500 ms", html);
+
+        // Verify first request attributes (success)
+        Assert.Contains("data-wf-start=\"50\"", html);
+        Assert.Contains("data-wf-duration=\"150\"", html);
+        Assert.Contains("data-wf-url=\"external-api.test/v1/users?id=123\"", html);
+        Assert.Contains("data-wf-status=\"200\"", html);
+
+        // Verify second request attributes (failure & html-encoded)
+        Assert.Contains("data-wf-start=\"320\"", html);
+        Assert.Contains("data-wf-duration=\"80\"", html);
+        Assert.Contains("data-wf-url=\"untrusted-api.test/v1/search?query=a&amp;b=%3Cscript%3E\"", html);
+        Assert.Contains("data-wf-status=\"500\"", html);
+        Assert.Contains("wf-bar--error", html);
+    }
+
     private static DebugEntry CreateEntry()
     {
         return new DebugEntry
