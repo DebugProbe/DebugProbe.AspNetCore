@@ -166,6 +166,44 @@ public class HtmlRendererTests
         Assert.Contains("wf-bar--error", html);
     }
 
+    [Fact]
+    public void Details_page_renders_curl_copy_attributes_and_buttons()
+    {
+        var entry = CreateEntry();
+        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        {
+            Method = "PUT",
+            Url = "https://external-api.test/v1/update",
+            StatusCode = 200,
+            DurationMs = 120,
+            RequestBody = "{\"name\":\"John\"}",
+            RequestHeaders = new Dictionary<string, string> { ["Authorization"] = "Bearer token" }
+        });
+
+        var html = HtmlRenderer.RenderDetailsPage(
+            entry,
+            CreateEnvironment(),
+            "{\"request\":true}",
+            "{\"response\":true}");
+
+        // 1. Verify Incoming Request Card attributes and button
+        Assert.Contains("data-method=\"POST\"", html);
+        Assert.Contains("data-url=\"http://example.test/orders?id=10\"", html);
+        Assert.Contains("data-headers=\"{&quot;X-Test&quot;:&quot;yes&quot;}\"", html);
+        Assert.Contains("data-body=\"{&quot;request&quot;:true}\"", html);
+        Assert.Contains("class=\"curl-copy-btn\"", html);
+
+        // 2. Verify Outgoing Request Card attributes and button
+        Assert.Contains("data-method=\"PUT\"", html);
+        Assert.Contains("data-url=\"https://external-api.test/v1/update\"", html);
+        Assert.Contains("data-headers=\"{&quot;Authorization&quot;:&quot;Bearer token&quot;}\"", html);
+        Assert.Contains("data-body=\"{&quot;name&quot;:&quot;John&quot;}\"", html);
+
+        // 3. Verify Response Card has no curl copy button (only 2 copy curl buttons in total should exist in HTML markup)
+        var occurrences = (html.Length - html.Replace("class=\"curl-copy-btn\"", "").Length) / "class=\"curl-copy-btn\"".Length;
+        Assert.Equal(2, occurrences);
+    }
+
     private static DebugEntry CreateEntry()
     {
         return new DebugEntry

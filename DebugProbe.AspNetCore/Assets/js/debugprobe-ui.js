@@ -10,6 +10,61 @@ function copyText(btn) {
     setTimeout(() => btn.innerText = "Copy", 1500);
 }
 
+function copyAsCurl(btn) {
+    const card = btn.closest(".trace-card");
+    if (!card) return;
+
+    const method = card.dataset.method;
+    const url = card.dataset.url;
+    if (!method || !url) return;
+
+    let headers = {};
+    try {
+        headers = JSON.parse(card.dataset.headers || '{}');
+    } catch (e) {
+        // Fallback or ignore
+    }
+
+    const body = card.dataset.body;
+
+    function escapeSingleQuote(str) {
+        if (!str) return "";
+        return str.replace(/'/g, "'\\''");
+    }
+
+    let curlCmd = `curl -X ${method.toUpperCase()} '${escapeSingleQuote(url)}'`;
+
+    // Process headers
+    for (const [key, value] of Object.entries(headers)) {
+        if (!key || !value) continue;
+        const trimmedVal = value.trim();
+        if (trimmedVal === "[REDACTED]" || trimmedVal === "") continue;
+
+        curlCmd += ` -H '${escapeSingleQuote(key)}: ${escapeSingleQuote(value)}'`;
+    }
+
+    // Process body (skip if empty or truncated indicator)
+    if (body && body.trim() !== "" && body !== "[Body too large]") {
+        curlCmd += ` -d '${escapeSingleQuote(body)}'`;
+    }
+
+    navigator.clipboard.writeText(curlCmd);
+
+    // Show temporary "Copied!" tooltip
+    const tooltip = document.createElement("div");
+    tooltip.className = "copied-tooltip";
+    tooltip.textContent = "Copied!";
+    document.body.appendChild(tooltip);
+
+    const rect = btn.getBoundingClientRect();
+    tooltip.style.left = (rect.left + window.scrollX + rect.width / 2) + "px";
+    tooltip.style.top = (rect.top + window.scrollY) + "px";
+
+    setTimeout(() => {
+        tooltip.remove();
+    }, 1500);
+}
+
 
 const clearBtn = document.getElementById("clearBtn");
 if (clearBtn) {
