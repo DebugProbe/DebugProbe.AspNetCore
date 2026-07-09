@@ -87,7 +87,11 @@ internal static class HtmlRenderer
                 BuildPayloadSection("URL", string.IsNullOrWhiteSpace(x.RequestUrl) ? pathWithQuery : x.RequestUrl, "url"),
                 BuildHeaderSection("Headers", x.RequestHeaders),
                 BuildPayloadSection("Body", req, "body")
-            ]);
+            ],
+            dataMethod: x.Method,
+            dataUrl: string.IsNullOrWhiteSpace(x.RequestUrl) ? pathWithQuery : x.RequestUrl,
+            dataHeaders: System.Text.Json.JsonSerializer.Serialize(x.RequestHeaders),
+            dataBody: x.RequestBody);
 
         var incomingResponse = BuildTraceCard(
             "Final Response",
@@ -189,7 +193,11 @@ internal static class HtmlRenderer
             statusCode: request.StatusCode,
             statusText: request.StatusCode.HasValue ? null : "Failed",
             durationMs: request.DurationMs,
-            details: details);
+            details: details,
+            dataMethod: request.Method,
+            dataUrl: request.Url,
+            dataHeaders: System.Text.Json.JsonSerializer.Serialize(request.RequestHeaders),
+            dataBody: request.RequestBody);
     }
 
     private static string BuildWaterfallSection(DebugEntry entry)
@@ -280,7 +288,19 @@ internal static class HtmlRenderer
         </article>";
     }
 
-    private static string BuildTraceCard(string label, string method, string target, string classes, IEnumerable<string> details, int? statusCode = null, string? statusText = null, long? durationMs = null)
+    private static string BuildTraceCard(
+        string label,
+        string method,
+        string target,
+        string classes,
+        IEnumerable<string> details,
+        int? statusCode = null,
+        string? statusText = null,
+        long? durationMs = null,
+        string? dataMethod = null,
+        string? dataUrl = null,
+        string? dataHeaders = null,
+        string? dataBody = null)
     {
         var targetHost = GetDisplayTarget(target);
         var status = statusCode.HasValue
@@ -292,8 +312,30 @@ internal static class HtmlRenderer
 
         var methodPill = !string.IsNullOrWhiteSpace(method)  ? $@"<span class=""method-pill"">{Encode(method)}</span>" : "";
 
+        var dataAttrs = "";
+        if (!string.IsNullOrWhiteSpace(dataMethod)) dataAttrs += $" data-method=\"{Encode(dataMethod)}\"";
+        if (!string.IsNullOrWhiteSpace(dataUrl)) dataAttrs += $" data-url=\"{Encode(dataUrl)}\"";
+        if (!string.IsNullOrWhiteSpace(dataHeaders)) dataAttrs += $" data-headers=\"{Encode(dataHeaders)}\"";
+        if (!string.IsNullOrWhiteSpace(dataBody)) dataAttrs += $" data-body=\"{Encode(dataBody)}\"";
+
+        var copyCurlBtn = "";
+        if (!string.IsNullOrWhiteSpace(dataMethod))
+        {
+            copyCurlBtn = $@"
+                        <button class=""curl-copy-btn"" 
+                                type=""button"" 
+                                title=""Copy as cURL"" 
+                                aria-label=""Copy as cURL"" 
+                                onclick=""copyAsCurl(this)"">
+                            <svg viewBox=""0 0 24 24"" aria-hidden=""true"">
+                                <path d=""M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2""></path>
+                                <rect x=""8"" y=""2"" width=""8"" height=""4"" rx=""1"" ry=""1""></rect>
+                            </svg>
+                        </button>";
+        }
+
         return $@"
-        <article class=""trace-card {Encode(classes)}"">
+        <article class=""trace-card {Encode(classes)}""{dataAttrs}>
             <div class=""trace-card-main"">
                 <div class=""trace-card-header"">
                     <div class=""trace-card-title"">
@@ -305,6 +347,7 @@ internal static class HtmlRenderer
                     <div class=""trace-card-meta"">
                         {status}
                         {duration}
+                        {copyCurlBtn}
                     </div>
                 </div>
                 <div class=""trace-details"">

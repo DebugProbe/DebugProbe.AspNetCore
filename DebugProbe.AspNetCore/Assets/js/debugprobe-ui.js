@@ -10,6 +10,78 @@ function copyText(btn) {
     setTimeout(() => btn.innerText = "Copy", 1500);
 }
 
+function buildCurlCommand(method, url, headers, body, isWindows) {
+    function escapeSingleQuote(str) {
+        if (!str) return "";
+        return str.replace(/'/g, "'\\''");
+    }
+
+    function escapeDoubleQuote(str) {
+        if (!str) return "";
+        return str.replace(/"/g, '\\"').replace(/%/g, '%%');
+    }
+
+    const quote = isWindows ? '"' : "'";
+    const escape = isWindows ? escapeDoubleQuote : escapeSingleQuote;
+
+    let curlCmd = `curl -X ${method.toUpperCase()} ${quote}${escape(url)}${quote}`;
+
+    // Process headers
+    for (const [key, value] of Object.entries(headers)) {
+        if (!key || !value) continue;
+        const trimmedVal = value.trim();
+        if (trimmedVal === "[REDACTED]" || trimmedVal === "") continue;
+
+        curlCmd += ` -H ${quote}${escape(key)}: ${escape(value)}${quote}`;
+    }
+
+    // Process body (skip if empty or truncated indicator)
+    if (body && body.trim() !== "" && body !== "[Body too large]") {
+        curlCmd += ` -d ${quote}${escape(body)}${quote}`;
+    }
+
+    return curlCmd;
+}
+
+function copyAsCurl(btn) {
+    const card = btn.closest(".trace-card");
+    if (!card) return;
+
+    const method = card.dataset.method;
+    const url = card.dataset.url;
+    if (!method || !url) return;
+
+    let headers = {};
+    try {
+        headers = JSON.parse(card.dataset.headers || '{}');
+    } catch (e) {
+        // Fallback or ignore
+    }
+
+    const body = card.dataset.body;
+
+    const isWindows = (navigator.platform && navigator.platform.indexOf('Win') !== -1) || 
+                      (navigator.userAgent && navigator.userAgent.indexOf('Win') !== -1);
+
+    const curlCmd = buildCurlCommand(method, url, headers, body, isWindows);
+
+    navigator.clipboard.writeText(curlCmd);
+
+    // Show temporary "Copied!" tooltip
+    const tooltip = document.createElement("div");
+    tooltip.className = "copied-tooltip";
+    tooltip.textContent = "Copied!";
+    document.body.appendChild(tooltip);
+
+    const rect = btn.getBoundingClientRect();
+    tooltip.style.left = (rect.left + window.scrollX + rect.width / 2) + "px";
+    tooltip.style.top = (rect.top + window.scrollY) + "px";
+
+    setTimeout(() => {
+        tooltip.remove();
+    }, 1500);
+}
+
 
 const clearBtn = document.getElementById("clearBtn");
 if (clearBtn) {
