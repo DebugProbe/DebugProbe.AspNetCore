@@ -43,6 +43,82 @@ function buildCurlCommand(method, url, headers, body, isWindows) {
     return curlCmd;
 }
 
+function showCopiedTooltip(btn) {
+    const tooltip = document.createElement("div");
+    tooltip.className = "copied-tooltip";
+    tooltip.textContent = "Copied!";
+    document.body.appendChild(tooltip);
+
+    const rect = btn.getBoundingClientRect();
+    tooltip.style.left = (rect.left + window.scrollX + rect.width / 2) + "px";
+    tooltip.style.top = (rect.top + window.scrollY) + "px";
+
+    setTimeout(() => {
+        tooltip.remove();
+    }, 1500);
+}
+
+function escapeCSharpString(str) {
+    if (!str) return "";
+    return str
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n');
+}
+
+function buildCSharpSnippet(method, url, headers, body) {
+    const escapedUrl = escapeCSharpString(url);
+    const methodFormatted = method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
+    let snippet = `var request = new HttpRequestMessage(HttpMethod.${methodFormatted}, "${escapedUrl}");\n`;
+
+    for (const [key, value] of Object.entries(headers)) {
+        if (!key || !value) continue;
+        const trimmedVal = value.trim();
+        if (trimmedVal === "[REDACTED]" || trimmedVal === "") continue;
+
+        snippet += `request.Headers.Add("${escapeCSharpString(key)}", "${escapeCSharpString(value)}");\n`;
+    }
+
+    if (body && body.trim() !== "" && body !== "[Body too large]") {
+        let contentType = "application/json";
+        for (const [key, value] of Object.entries(headers)) {
+            if (key.toLowerCase() === "content-type" && value && value.trim() !== "" && value.trim() !== "[REDACTED]") {
+                contentType = value.split(";")[0].trim();
+                break;
+            }
+        }
+        snippet += `request.Content = new StringContent("${escapeCSharpString(body)}", Encoding.UTF8, "${escapeCSharpString(contentType)}");\n`;
+    }
+
+    snippet += `var response = await httpClient.SendAsync(request);`;
+    return snippet;
+}
+
+function copyAsCSharp(btn) {
+    const card = btn.closest(".trace-card");
+    if (!card) return;
+
+    const method = card.dataset.method;
+    const url = card.dataset.url;
+    if (!method || !url) return;
+
+    let headers = {};
+    try {
+        headers = JSON.parse(card.dataset.headers || '{}');
+    } catch (e) {
+        // Fallback or ignore
+    }
+
+    const body = card.dataset.body;
+
+    const snippet = buildCSharpSnippet(method, url, headers, body);
+
+    navigator.clipboard.writeText(snippet);
+
+    showCopiedTooltip(btn);
+}
+
 function copyAsCurl(btn) {
     const card = btn.closest(".trace-card");
     if (!card) return;
@@ -67,19 +143,7 @@ function copyAsCurl(btn) {
 
     navigator.clipboard.writeText(curlCmd);
 
-    // Show temporary "Copied!" tooltip
-    const tooltip = document.createElement("div");
-    tooltip.className = "copied-tooltip";
-    tooltip.textContent = "Copied!";
-    document.body.appendChild(tooltip);
-
-    const rect = btn.getBoundingClientRect();
-    tooltip.style.left = (rect.left + window.scrollX + rect.width / 2) + "px";
-    tooltip.style.top = (rect.top + window.scrollY) + "px";
-
-    setTimeout(() => {
-        tooltip.remove();
-    }, 1500);
+    showCopiedTooltip(btn);
 }
 
 

@@ -318,10 +318,10 @@ internal static class HtmlRenderer
         if (!string.IsNullOrWhiteSpace(dataHeaders)) dataAttrs += $" data-headers=\"{Encode(dataHeaders)}\"";
         if (!string.IsNullOrWhiteSpace(dataBody)) dataAttrs += $" data-body=\"{Encode(dataBody)}\"";
 
-        var copyCurlBtn = "";
+        var copyBtns = "";
         if (!string.IsNullOrWhiteSpace(dataMethod))
         {
-            copyCurlBtn = $@"
+            copyBtns = $@"
                         <button class=""curl-copy-btn"" 
                                 type=""button"" 
                                 title=""Copy as cURL"" 
@@ -330,6 +330,16 @@ internal static class HtmlRenderer
                             <svg viewBox=""0 0 24 24"" aria-hidden=""true"">
                                 <path d=""M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2""></path>
                                 <rect x=""8"" y=""2"" width=""8"" height=""4"" rx=""1"" ry=""1""></rect>
+                            </svg>
+                        </button>
+                        <button class=""csharp-copy-btn"" 
+                                type=""button"" 
+                                title=""Copy as C#"" 
+                                aria-label=""Copy as C#"" 
+                                onclick=""copyAsCSharp(this)"">
+                            <svg viewBox=""0 0 24 24"" aria-hidden=""true"">
+                                <path d=""M16 18l6-6-6-6""></path>
+                                <path d=""M8 6l-6 6 6 6""></path>
                             </svg>
                         </button>";
         }
@@ -347,7 +357,7 @@ internal static class HtmlRenderer
                     <div class=""trace-card-meta"">
                         {status}
                         {duration}
-                        {copyCurlBtn}
+                        {copyBtns}
                     </div>
                 </div>
                 <div class=""trace-details"">
