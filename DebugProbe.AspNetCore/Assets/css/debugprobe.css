@@ -1293,7 +1293,8 @@ pre {
 /* =========================
    cURL Copy Button & Tooltip
 ========================= */
-.curl-copy-btn {
+.curl-copy-btn,
+.csharp-copy-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1308,13 +1309,15 @@ pre {
     transition: all 0.15s ease;
 }
 
-.curl-copy-btn:hover {
+.curl-copy-btn:hover,
+.csharp-copy-btn:hover {
     background: #f9fafb;
     border-color: #d1d5db;
     color: #111827;
 }
 
-.curl-copy-btn svg {
+.curl-copy-btn svg,
+.csharp-copy-btn svg {
     width: 14px;
     height: 14px;
     stroke: currentColor;
