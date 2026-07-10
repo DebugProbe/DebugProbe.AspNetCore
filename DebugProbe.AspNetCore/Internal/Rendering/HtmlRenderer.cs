@@ -2,6 +2,7 @@ using System.Net;
 using DebugProbe.AspNetCore.Internal.Resources;
 using DebugProbe.AspNetCore.Internal.Utils;
 using DebugProbe.AspNetCore.Models;
+using DebugProbe.AspNetCore.Storage;
 
 namespace DebugProbe.AspNetCore.Internal.Rendering;
 
@@ -59,7 +60,52 @@ internal static class HtmlRenderer
         var slowRequests = items.Count(x => x.DurationMs >= slowRequestThresholdMs);
         var errorRate = totalRequests == 0 ? 0 : items.Count(x => x.StatusCode >= 400) * 100d / totalRequests;
 
-        return BuildLayout(EmbeddedResources.Index
+        var exceptionPanel = "";
+        var store = DebugEntryStore.Instance;
+        if (store != null && !store.ExceptionGroups.IsEmpty)
+        {
+            var sortedGroups = store.ExceptionGroups.Values
+                .OrderByDescending(g => g.Count)
+                .ToList();
+
+            var groupRows = string.Join("", sortedGroups.Select(g => $@"
+            <tr>
+                <td style=""font-weight: 600; color: #b42318; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"" title=""{Encode(g.Type)}"">{Encode(g.Type)}</td>
+                <td class=""request-path""><span class=""request-path-value"" title=""{Encode(g.SampleMessage)}"">{Encode(g.SampleMessage)}</span></td>
+                <td><strong>{g.Count}</strong></td>
+                <td>{g.LastSeen.ToLocalTime():yyyy-MM-dd HH:mm:ss}</td>
+            </tr>"));
+
+            exceptionPanel = $@"
+        <h3>Exception Groups</h3>
+        <div class=""table-wrap"" style=""margin-bottom: 24px;"">
+            <table style=""table-layout: fixed;"">
+                <thead>
+                    <tr>
+                        <th style=""width: 25%;"">Type</th>
+                        <th style=""width: 45%;"">Sample Message</th>
+                        <th style=""width: 10%;"">Count</th>
+                        <th style=""width: 20%;"">Last Seen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {groupRows}
+                </tbody>
+            </table>
+        </div>";
+        }
+
+        var pageHtml = EmbeddedResources.Index;
+        if (!string.IsNullOrEmpty(exceptionPanel))
+        {
+            var idx = pageHtml.IndexOf("<div class=\"table-wrap\">");
+            if (idx >= 0)
+            {
+                pageHtml = pageHtml.Insert(idx, exceptionPanel);
+            }
+        }
+
+        return BuildLayout(pageHtml
             .Replace("{{rows}}", rows)
             .Replace("{{total_count}}", items.Count.ToString())
             .Replace("{{method_options}}", methodOptions)
@@ -318,10 +364,10 @@ internal static class HtmlRenderer
         if (!string.IsNullOrWhiteSpace(dataHeaders)) dataAttrs += $" data-headers=\"{Encode(dataHeaders)}\"";
         if (!string.IsNullOrWhiteSpace(dataBody)) dataAttrs += $" data-body=\"{Encode(dataBody)}\"";
 
-        var copyCurlBtn = "";
+        var copyBtns = "";
         if (!string.IsNullOrWhiteSpace(dataMethod))
         {
-            copyCurlBtn = $@"
+            copyBtns = $@"
                         <button class=""curl-copy-btn"" 
                                 type=""button"" 
                                 title=""Copy as cURL"" 
@@ -330,6 +376,16 @@ internal static class HtmlRenderer
                             <svg viewBox=""0 0 24 24"" aria-hidden=""true"">
                                 <path d=""M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2""></path>
                                 <rect x=""8"" y=""2"" width=""8"" height=""4"" rx=""1"" ry=""1""></rect>
+                            </svg>
+                        </button>
+                        <button class=""csharp-copy-btn"" 
+                                type=""button"" 
+                                title=""Copy as C#"" 
+                                aria-label=""Copy as C#"" 
+                                onclick=""copyAsCSharp(this)"">
+                            <svg viewBox=""0 0 24 24"" aria-hidden=""true"">
+                                <path d=""M16 18l6-6-6-6""></path>
+                                <path d=""M8 6l-6 6 6 6""></path>
                             </svg>
                         </button>";
         }
@@ -347,7 +403,7 @@ internal static class HtmlRenderer
                     <div class=""trace-card-meta"">
                         {status}
                         {duration}
-                        {copyCurlBtn}
+                        {copyBtns}
                     </div>
                 </div>
                 <div class=""trace-details"">
