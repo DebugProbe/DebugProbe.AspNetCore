@@ -29,6 +29,10 @@ app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
-app.MapControllers();
+app.MapGet("/delay/{milliseconds}", async (int milliseconds) =>
+{
+    await Task.Delay(milliseconds);
+    return Results.Ok(new { delayedMs = milliseconds });
+});
 
 app.Run();

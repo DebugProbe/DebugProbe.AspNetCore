@@ -1,4 +1,4 @@
-﻿using DebugProbe.SampleApi.Models;
+using DebugProbe.SampleApi.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DebugProbe.SampleApi.Controllers
