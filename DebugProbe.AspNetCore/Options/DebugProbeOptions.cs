@@ -29,6 +29,11 @@ public class DebugProbeOptions
     internal int MaxBodyCaptureSizeBytes => MaxBodyCaptureSizeKb * 1024;
 
     /// <summary>
+    /// Duration in milliseconds above which a request or outgoing dependency is flagged as slow in the UI. Set to 0 or negative to disable the badge.
+    /// </summary>
+    public int SlowRequestThresholdMs { get; set; } = 1000;
+
+    /// <summary>
     /// Allows compare operations to target localhost and private network addresses.
     /// Defaults to true in Development and false in other environments unless explicitly configured.
     /// </summary>

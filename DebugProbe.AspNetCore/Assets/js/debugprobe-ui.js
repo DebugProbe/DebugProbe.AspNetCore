@@ -95,13 +95,13 @@ function buildCSharpSnippet(method, url, headers, body) {
     return snippet;
 }
 
-function copyAsCSharp(btn) {
+function getTraceCardData(btn) {
     const card = btn.closest(".trace-card");
-    if (!card) return;
+    if (!card) return null;
 
     const method = card.dataset.method;
     const url = card.dataset.url;
-    if (!method || !url) return;
+    if (!method || !url) return null;
 
     let headers = {};
     try {
@@ -112,7 +112,14 @@ function copyAsCSharp(btn) {
 
     const body = card.dataset.body;
 
-    const snippet = buildCSharpSnippet(method, url, headers, body);
+    return { card, method, url, headers, body };
+}
+
+function copyAsCSharp(btn) {
+    const data = getTraceCardData(btn);
+    if (!data) return;
+
+    const snippet = buildCSharpSnippet(data.method, data.url, data.headers, data.body);
 
     navigator.clipboard.writeText(snippet);
 
@@ -120,28 +127,152 @@ function copyAsCSharp(btn) {
 }
 
 function copyAsCurl(btn) {
-    const card = btn.closest(".trace-card");
-    if (!card) return;
-
-    const method = card.dataset.method;
-    const url = card.dataset.url;
-    if (!method || !url) return;
-
-    let headers = {};
-    try {
-        headers = JSON.parse(card.dataset.headers || '{}');
-    } catch (e) {
-        // Fallback or ignore
-    }
-
-    const body = card.dataset.body;
+    const data = getTraceCardData(btn);
+    if (!data) return;
 
     const isWindows = (navigator.platform && navigator.platform.indexOf('Win') !== -1) || 
                       (navigator.userAgent && navigator.userAgent.indexOf('Win') !== -1);
 
-    const curlCmd = buildCurlCommand(method, url, headers, body, isWindows);
+    const curlCmd = buildCurlCommand(data.method, data.url, data.headers, data.body, isWindows);
 
     navigator.clipboard.writeText(curlCmd);
+
+    showCopiedTooltip(btn);
+}
+
+function getPayloadBody(card, title) {
+    const panels = card.querySelectorAll(".payload-panel");
+    for (const panel of panels) {
+        const span = panel.querySelector("summary span");
+        if (span && span.textContent.trim().toLowerCase() === title.toLowerCase()) {
+            const pre = panel.querySelector("pre");
+            return pre ? pre.textContent : null;
+        }
+    }
+    return null;
+}
+
+function getEntryDataForMarkdown(btn) {
+    const data = getTraceCardData(btn);
+    if (!data) return null;
+
+    const isMainRequest = data.card.classList.contains("request");
+
+    let status = "";
+    let duration = "";
+    const statusEl = data.card.querySelector(".trace-card-meta .status");
+    if (statusEl) {
+        status = statusEl.textContent.trim();
+    }
+    const durationEl = data.card.querySelector(".trace-card-meta span:not(.status)");
+    if (durationEl) {
+        duration = durationEl.textContent.trim();
+    }
+
+    let requestBody = data.body;
+    let responseBody = null;
+
+    if (isMainRequest) {
+        const responseCard = document.querySelector(".trace-card.response");
+        if (responseCard) {
+            responseBody = getPayloadBody(responseCard, "Body");
+        }
+    } else {
+        responseBody = getPayloadBody(data.card, "Response Body");
+    }
+
+    let outgoingRequests = [];
+    if (isMainRequest) {
+        const depCards = document.querySelectorAll(".trace-card.dependency");
+        depCards.forEach(depCard => {
+            const depMethod = depCard.dataset.method;
+            const depUrl = depCard.dataset.url;
+            
+            const depStatusEl = depCard.querySelector(".trace-card-meta .status");
+            const depStatus = depStatusEl ? depStatusEl.textContent.trim() : "";
+            
+            const depDurationEl = depCard.querySelector(".trace-card-meta span:not(.status)");
+            const depDuration = depDurationEl ? depDurationEl.textContent.trim() : "";
+            
+            if (depMethod && depUrl) {
+                outgoingRequests.push({
+                    method: depMethod,
+                    url: depUrl,
+                    status: depStatus,
+                    duration: depDuration
+                });
+            }
+        });
+    }
+
+    return {
+        method: data.method,
+        path: data.url,
+        status: status,
+        duration: duration,
+        requestBody: requestBody,
+        responseBody: responseBody,
+        outgoingRequests: outgoingRequests
+    };
+}
+
+function formatDurationToSeconds(durationStr) {
+    if (!durationStr) return "";
+    const ms = parseInt(durationStr.replace(/[^\d]/g, ""), 10);
+    if (!isNaN(ms)) {
+        return (ms / 1000).toFixed(3).replace(/\.?0+$/, "") + "s";
+    }
+    return durationStr;
+}
+
+function isJson(str) {
+    if (!str) return false;
+    const trimmed = str.trim();
+    if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+        try {
+            JSON.parse(trimmed);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+    return false;
+}
+
+function generateMarkdownExport(entry) {
+    let md = `### ${entry.method.toUpperCase()} ${entry.path} — ${entry.status} (${formatDurationToSeconds(entry.duration)})\n\n`;
+
+    if (entry.requestBody && entry.requestBody.trim() !== "") {
+        const isBodyJson = isJson(entry.requestBody);
+        const lang = isBodyJson ? "json" : "";
+        md += `**Request Body:**\n\`\`\`${lang}\n${entry.requestBody.trim()}\n\`\`\`\n\n`;
+    }
+
+    if (entry.responseBody && entry.responseBody.trim() !== "") {
+        const isBodyJson = isJson(entry.responseBody);
+        const lang = isBodyJson ? "json" : "";
+        md += `**Response Body:**\n\`\`\`${lang}\n${entry.responseBody.trim()}\n\`\`\`\n\n`;
+    }
+
+    if (entry.outgoingRequests && entry.outgoingRequests.length > 0) {
+        md += `**Outgoing Calls:**\n`;
+        entry.outgoingRequests.forEach(req => {
+            const statusStr = req.status ? ` — ${req.status}` : "";
+            const durationStr = req.duration ? ` (${req.duration.replace(/\s+/g, "")})` : "";
+            md += `- ${req.method.toUpperCase()} ${req.url}${statusStr}${durationStr}\n`;
+        });
+    }
+
+    return md.trim();
+}
+
+function copyAsMarkdown(btn) {
+    const entry = getEntryDataForMarkdown(btn);
+    if (!entry) return;
+
+    const markdown = generateMarkdownExport(entry);
+
+    navigator.clipboard.writeText(markdown);
 
     showCopiedTooltip(btn);
 }

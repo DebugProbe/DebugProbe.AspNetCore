@@ -3,6 +3,7 @@ using DebugProbe.AspNetCore.Internal.Resources;
 using DebugProbe.AspNetCore.Internal.Utils;
 using DebugProbe.AspNetCore.Models;
 using DebugProbe.AspNetCore.Storage;
+using DebugProbe.AspNetCore.Options;
 
 namespace DebugProbe.AspNetCore.Internal.Rendering;
 
@@ -23,13 +24,16 @@ internal static class HtmlRenderer
             .Replace("{{env_block}}", envBlock);
     }
 
-    public static string RenderIndexPage(List<DebugEntry> items)
+    public static string RenderIndexPage(List<DebugEntry> items, DebugProbeOptions? options = null)
     {
-        const int slowRequestThresholdMs = 1000;
+        options ??= new DebugProbeOptions();
+        var slowRequestThresholdMs = options.SlowRequestThresholdMs;
 
         var rows = string.Join("", items.Select(x =>
         {
             var pathWithQuery = string.IsNullOrEmpty(x.Query) ? x.Path : $"{x.Path}{x.Query}";
+            var badge = RenderSlowBadge(TimeSpan.FromMilliseconds(x.DurationMs), options);
+            var badgeHtml = string.IsNullOrEmpty(badge) ? "" : " " + badge;
 
             return $@"
         <tr data-url=""/debug/{Encode(x.Id)}""
@@ -41,7 +45,7 @@ internal static class HtmlRenderer
             <td><span class=""method-pill"">{Encode(x.Method)}</span></td>
             <td class=""request-path""><span class=""request-path-value"" title=""{Encode(pathWithQuery)}"">{Encode(pathWithQuery)}</span></td>
             <td><span class=""status {GetStatusClass(x.StatusCode)}"">{x.StatusCode}</span></td>
-            <td>{x.DurationMs} ms</td>
+            <td>{x.DurationMs} ms{badgeHtml}</td>
         </tr>";
         }));
 
@@ -57,7 +61,7 @@ internal static class HtmlRenderer
 
         var totalRequests = items.Count;
         var averageResponseMs = totalRequests == 0 ? 0 : (int)Math.Round(items.Average(x => x.DurationMs));
-        var slowRequests = items.Count(x => x.DurationMs >= slowRequestThresholdMs);
+        var slowRequests = slowRequestThresholdMs > 0 ? items.Count(x => x.DurationMs >= slowRequestThresholdMs) : 0;
         var errorRate = totalRequests == 0 ? 0 : items.Count(x => x.StatusCode >= 400) * 100d / totalRequests;
 
         var exceptionPanel = "";
@@ -115,8 +119,9 @@ internal static class HtmlRenderer
             .Replace("{{error_rate}}", $"{errorRate:0.#}%"));
     }
 
-    public static string RenderDetailsPage(DebugEntry x, DebugEnvironment e, string req, string res)
+    public static string RenderDetailsPage(DebugEntry x, DebugEnvironment e, string req, string res, DebugProbeOptions? options = null)
     {
+        options ??= new DebugProbeOptions();
         var pathWithQuery = string.IsNullOrEmpty(x.Query) ? x.Path : $"{x.Path}{x.Query}";
 
         var statusClass = GetStatusClass(x.StatusCode);
@@ -137,21 +142,24 @@ internal static class HtmlRenderer
             dataMethod: x.Method,
             dataUrl: string.IsNullOrWhiteSpace(x.RequestUrl) ? pathWithQuery : x.RequestUrl,
             dataHeaders: System.Text.Json.JsonSerializer.Serialize(x.RequestHeaders),
-            dataBody: x.RequestBody);
+            dataBody: x.RequestBody,
+            options: options);
 
         var incomingResponse = BuildTraceCard(
             "Final Response",
             "",
             "",
             x.StatusCode >= 400 ? "response error" : "response",
+            details:
             [
                 BuildHeaderSection("Headers", x.ResponseHeaders),
                 BuildPayloadSection("Body", res, "body")
-            ]);
+            ],
+            options: options);
 
-        var waterfall = BuildWaterfallSection(x);
+        var waterfall = BuildWaterfallSection(x, options);
 
-        var outgoingRequests = string.Join("", x.OutgoingRequests.Select(BuildOutgoingRequestCard));
+        var outgoingRequests = string.Join("", x.OutgoingRequests.Select(r => BuildOutgoingRequestCard(r, options)));
 
         var combinedOutgoing = waterfall + outgoingRequests;
 
@@ -166,6 +174,7 @@ internal static class HtmlRenderer
             .Replace("{{local}}", x.Timestamp.ToLocalTime().ToString("HH:mm:ss"))
 
             .Replace("{{durationMs}}", x.DurationMs.ToString())
+            .Replace("{{durationBadge}}", RenderSlowBadge(TimeSpan.FromMilliseconds(x.DurationMs), options))
             .Replace("{{completed}}", x.Timestamp.AddMilliseconds(x.DurationMs).ToLocalTime().ToString("HH:mm:ss"))
             .Replace("{{dependencyCount}}", x.OutgoingRequests.Count.ToString())
 
@@ -212,7 +221,7 @@ internal static class HtmlRenderer
         return BuildLayout(content);
     }
 
-    private static string BuildOutgoingRequestCard(DebugOutgoingRequest request)
+    private static string BuildOutgoingRequestCard(DebugOutgoingRequest request, DebugProbeOptions options)
     {
         var classes = request.StatusCode >= 400 || !string.IsNullOrWhiteSpace(request.Exception)
             ? "dependency error"
@@ -243,10 +252,11 @@ internal static class HtmlRenderer
             dataMethod: request.Method,
             dataUrl: request.Url,
             dataHeaders: System.Text.Json.JsonSerializer.Serialize(request.RequestHeaders),
-            dataBody: request.RequestBody);
+            dataBody: request.RequestBody,
+            options: options);
     }
 
-    private static string BuildWaterfallSection(DebugEntry entry)
+    private static string BuildWaterfallSection(DebugEntry entry, DebugProbeOptions options)
     {
         const double MinPercent = 0.0;
         const double MaxPercent = 100.0;
@@ -304,6 +314,9 @@ internal static class HtmlRenderer
             var dataUrl = Encode(displayLabel);
             var dataStatus = Encode(outgoing.StatusCode.HasValue ? outgoing.StatusCode.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "Failed");
 
+            var badge = RenderSlowBadge(TimeSpan.FromMilliseconds(outgoing.DurationMs), options);
+            var badgeHtml = string.IsNullOrEmpty(badge) ? "" : " " + badge;
+
             rowsHtml.Add($@"
                 <div class=""waterfall-row"">
                     <span class=""wf-label"" title=""{Encode(outgoing.Url)}"">{Encode(displayLabel)}</span>
@@ -312,7 +325,7 @@ internal static class HtmlRenderer
                              data-wf-start=""{dataStart}""
                              data-wf-duration=""{dataDuration}""
                              data-wf-url=""{dataUrl}""
-                             data-wf-status=""{dataStatus}"">{outgoing.DurationMs} ms</div>
+                             data-wf-status=""{dataStatus}"">{outgoing.DurationMs} ms{badgeHtml}</div>
                     </div>
                 </div>");
         }
@@ -346,15 +359,21 @@ internal static class HtmlRenderer
         string? dataMethod = null,
         string? dataUrl = null,
         string? dataHeaders = null,
-        string? dataBody = null)
+        string? dataBody = null,
+        DebugProbeOptions? options = null)
     {
+        options ??= new DebugProbeOptions();
         var targetHost = GetDisplayTarget(target);
         var status = statusCode.HasValue
             ? $@"<span class=""status {GetStatusClass(statusCode.Value)}"">{Encode(GetStatusText(statusCode.Value))}</span>"
             : !string.IsNullOrWhiteSpace(statusText)
                 ? $@"<span class=""status status-500"">{Encode(statusText)}</span>"
             : "";
-        var duration = durationMs.HasValue ? $@"<span>{durationMs.Value} ms</span>" : "";
+
+        var durationBadge = durationMs.HasValue ? RenderSlowBadge(TimeSpan.FromMilliseconds(durationMs.Value), options) : "";
+        var durationHtml = durationMs.HasValue 
+            ? $@"<span>{durationMs.Value} ms{(string.IsNullOrEmpty(durationBadge) ? "" : " " + durationBadge)}</span>" 
+            : "";
 
         var methodPill = !string.IsNullOrWhiteSpace(method)  ? $@"<span class=""method-pill"">{Encode(method)}</span>" : "";
 
@@ -387,6 +406,16 @@ internal static class HtmlRenderer
                                 <path d=""M16 18l6-6-6-6""></path>
                                 <path d=""M8 6l-6 6 6 6""></path>
                             </svg>
+                        </button>
+                        <button class=""markdown-copy-btn"" 
+                                type=""button"" 
+                                title=""Copy as Markdown"" 
+                                aria-label=""Copy as Markdown"" 
+                                onclick=""copyAsMarkdown(this)"">
+                            <svg viewBox=""0 0 24 24"" aria-hidden=""true"">
+                                <rect x=""3"" y=""5"" width=""18"" height=""14"" rx=""2"" ry=""2""></rect>
+                                <path d=""M7 15V9l2.5 3 2.5-3v6M17 11l-2 2-2-2M15 9v4""></path>
+                            </svg>
                         </button>";
         }
 
@@ -402,7 +431,7 @@ internal static class HtmlRenderer
                     </div>
                     <div class=""trace-card-meta"">
                         {status}
-                        {duration}
+                        {durationHtml}
                         {copyBtns}
                     </div>
                 </div>
@@ -520,6 +549,15 @@ internal static class HtmlRenderer
             >= 1024 => $"{value / 1024d:0.#} KB",
             _ => $"{value} B"
         };
+    }
+
+    private static string RenderSlowBadge(TimeSpan duration, DebugProbeOptions options)
+    {
+        if (options.SlowRequestThresholdMs > 0 && duration.TotalMilliseconds >= options.SlowRequestThresholdMs)
+        {
+            return $@"<span class=""dbp-badge dbp-badge-slow"" title=""Exceeds {options.SlowRequestThresholdMs}ms threshold"">SLOW</span>";
+        }
+        return string.Empty;
     }
 
 }

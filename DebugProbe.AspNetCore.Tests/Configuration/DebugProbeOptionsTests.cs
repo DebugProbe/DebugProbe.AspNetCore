@@ -130,4 +130,25 @@ public class DebugProbeOptionsTests
 
         Assert.Equal(0, options.MaxBodyCaptureSizeKb);
     }
+
+    [Fact]
+    public void SlowRequestThresholdMs_defaults_to_1000()
+    {
+        var options = new DebugProbeOptions();
+        Assert.Equal(1000, options.SlowRequestThresholdMs);
+    }
+
+    [Fact]
+    public void SlowRequestThresholdMs_can_be_configured()
+    {
+        var services = new ServiceCollection();
+        services.AddDebugProbe(options =>
+        {
+            options.SlowRequestThresholdMs = 500;
+        });
+
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<DebugProbeOptions>();
+        Assert.Equal(500, options.SlowRequestThresholdMs);
+    }
 }
