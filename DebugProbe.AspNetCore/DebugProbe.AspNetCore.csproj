@@ -8,7 +8,7 @@
 		<NoWarn>1591</NoWarn>
 
 		<PackageId>DebugProbe.AspNetCore</PackageId>
-		<Version>1.6.8</Version>
+		<Version>1.6.9</Version>
 
 		<Authors>Georgi Hristov</Authors>
 
@@ -19,11 +19,11 @@
 		<PackageReleaseNotes>
 			## What's New
 
-			- Added cURL export support on the trace details page.
-			- Generate reproducible cURL commands directly from captured HTTP requests.
-			- Improved debugging workflows by making it easier to share and replay requests.
+			- Added configurable slow request and dependency badges to highlight performance bottlenecks.
+			- Added Markdown export for captured traces to simplify sharing in GitHub issues, pull requests, and documentation.
+			- Improved diagnostics and collaboration with quick, reusable trace summaries.
 
-			Thanks to @DevSars24 for the community contribution.
+			Thanks to @DevSars24 for the community contributions.
 		</PackageReleaseNotes>
 		
 		<PackageIcon>icon.png</PackageIcon>

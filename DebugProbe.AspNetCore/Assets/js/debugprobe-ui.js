@@ -302,10 +302,37 @@ const visibleCount = document.getElementById("visibleCount");
 const emptyFilterState = document.getElementById("emptyFilterState");
 const requestRows = Array.from(document.querySelectorAll("#requestTable tbody tr.clickable-row"));
 
+function updateUrlFilters(search, method, statusFamily) {
+    const params = new URLSearchParams(window.location.search);
+
+    if (search) {
+        params.set("search", search);
+    } else {
+        params.delete("search");
+    }
+
+    if (method) {
+        params.set("method", method);
+    } else {
+        params.delete("method");
+    }
+
+    if (statusFamily) {
+        params.set("status", statusFamily);
+    } else {
+        params.delete("status");
+    }
+
+    const query = params.toString();
+    const newUrl = window.location.pathname + (query ? "?" + query : "");
+    window.history.replaceState(null, "", newUrl);
+}
+
 function applyRequestFilters() {
     if (!requestRows.length) return;
 
-    const search = (requestSearch?.value ?? "").trim().toLowerCase();
+    const rawSearch = (requestSearch?.value ?? "").trim();
+    const search = rawSearch.toLowerCase();
     const method = methodFilter?.value ?? "";
     const statusFamily = statusFilter?.value ?? "";
     let shown = 0;
@@ -322,6 +349,8 @@ function applyRequestFilters() {
 
     if (visibleCount) visibleCount.innerText = shown.toString();
     if (emptyFilterState) emptyFilterState.hidden = shown > 0;
+
+    updateUrlFilters(rawSearch, method, statusFamily);
 }
 
 [requestSearch, methodFilter, statusFilter].forEach(control => {
@@ -336,6 +365,32 @@ resetFiltersBtn?.addEventListener("click", () => {
     applyRequestFilters();
     requestSearch?.focus();
 });
+
+// Load filters from URL on page load
+if (requestRows.length > 0) {
+    const params = new URLSearchParams(window.location.search);
+    const searchVal = params.get("search");
+    const methodVal = params.get("method");
+    const statusVal = params.get("status");
+
+    if (requestSearch && searchVal !== null) {
+        requestSearch.value = searchVal;
+    }
+    if (methodFilter && methodVal !== null) {
+        const optionExists = Array.from(methodFilter.options).some(opt => opt.value === methodVal);
+        if (optionExists) {
+            methodFilter.value = methodVal;
+        }
+    }
+    if (statusFilter && statusVal !== null) {
+        const optionExists = Array.from(statusFilter.options).some(opt => opt.value === statusVal);
+        if (optionExists) {
+            statusFilter.value = statusVal;
+        }
+    }
+
+    applyRequestFilters();
+}
 
 // Phase 2: Waterfall Timeline Interactivity
 document.addEventListener("DOMContentLoaded", () => {
