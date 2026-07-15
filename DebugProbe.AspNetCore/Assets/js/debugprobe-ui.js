@@ -471,3 +471,63 @@ document.addEventListener("DOMContentLoaded", () => {
             .replace(/'/g, "&#039;");
     }
 });
+
+// Global keyboard shortcuts listener for the DebugProbe dashboard.
+document.addEventListener("keydown", (e) => {
+    // Ignore keydown when a modifier key is held (Ctrl/Cmd/Alt)
+    if (e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+    }
+
+    // Ignore repeating events from holding down keys
+    if (e.repeat) {
+        return;
+    }
+
+    const key = e.key;
+
+    // "Escape" must always work, even inside input/textarea/contenteditable elements
+    if (key === "Escape" || key === "Esc") {
+        const backLink = document.querySelector('a[href="/debug"]') || 
+                         Array.from(document.querySelectorAll("a")).find(a => a.textContent.includes("Back"));
+        if (backLink) {
+            backLink.click();
+        } else {
+            // If on the dashboard and in the search box, Esc blurs the input
+            const activeEl = document.activeElement;
+            if (activeEl && typeof activeEl.blur === "function") {
+                activeEl.blur();
+            }
+        }
+        return;
+    }
+
+    // Guard rail: skip all other shortcuts when in input/textarea/contenteditable
+    const activeEl = document.activeElement;
+    if (activeEl) {
+        const tag = activeEl.tagName.toLowerCase();
+        if (tag === "input" || tag === "textarea" || activeEl.isContentEditable) {
+            return;
+        }
+    }
+
+    switch (key) {
+        case "/": {
+            const searchInput = document.getElementById("requestSearch");
+            if (searchInput) {
+                e.preventDefault();
+                searchInput.focus();
+            }
+            break;
+        }
+        case "c":
+        case "C": {
+            const curlBtn = document.querySelector(".trace-card.request .curl-copy-btn");
+            if (curlBtn) {
+                curlBtn.click();
+            }
+            break;
+        }
+    }
+});
+
