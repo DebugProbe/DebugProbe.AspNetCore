@@ -523,4 +523,84 @@ public class HtmlRendererTests
         Assert.Contains("999 ms</div>", html);
         Assert.DoesNotContain(" 999 ms <span class=\"dbp-badge dbp-badge-slow\"", html);
     }
+
+    [Fact]
+    public void Build_request_rate_sparkline_handles_empty_state_gracefully()
+    {
+        var options = new DebugProbeOptions { LookbackMinutes = 15 };
+        var html = HtmlRenderer.BuildRequestRateSparkline(new List<DebugEntry>(), options);
+
+        Assert.Contains("class=\"dbp-sparkline\"", html);
+        // Should contain flat line point coordinates
+        Assert.Contains("22", html);
+    }
+
+    [Fact]
+    public void Build_request_rate_sparkline_maps_buckets_correctly()
+    {
+        var options = new DebugProbeOptions { LookbackMinutes = 15 };
+        var now = DateTimeOffset.UtcNow;
+        var entries = new List<DebugEntry>
+        {
+            new DebugEntry { Timestamp = now.AddMinutes(-1), StatusCode = 200, RequestBody = "", ResponseBody = "" },
+            new DebugEntry { Timestamp = now.AddMinutes(-5), StatusCode = 200, RequestBody = "", ResponseBody = "" }
+        };
+
+        var html = HtmlRenderer.BuildRequestRateSparkline(entries, options);
+        Assert.Contains("class=\"dbp-sparkline\"", html);
+    }
+
+    [Fact]
+    public void Compute_error_rate_trend_suppresses_arrow_when_previous_window_empty()
+    {
+        var options = new DebugProbeOptions { LookbackMinutes = 15 };
+        var now = DateTimeOffset.UtcNow;
+        var entries = new List<DebugEntry>
+        {
+            new DebugEntry { Timestamp = now.AddMinutes(-1), StatusCode = 500, RequestBody = "", ResponseBody = "" }
+        };
+
+        var trend = HtmlRenderer.ComputeErrorRateTrend(entries, options);
+        Assert.Equal(string.Empty, trend);
+    }
+
+    [Fact]
+    public void Compute_error_rate_trend_indicates_worse_when_error_rate_increases()
+    {
+        var options = new DebugProbeOptions { LookbackMinutes = 15 };
+        var now = DateTimeOffset.UtcNow;
+        var entries = new List<DebugEntry>
+        {
+            // Previous window: 2 requests, 0 errors => 0% error rate
+            new DebugEntry { Timestamp = now.AddMinutes(-20), StatusCode = 200, RequestBody = "", ResponseBody = "" },
+            new DebugEntry { Timestamp = now.AddMinutes(-25), StatusCode = 200, RequestBody = "", ResponseBody = "" },
+            // Current window: 2 requests, 1 error => 50% error rate
+            new DebugEntry { Timestamp = now.AddMinutes(-2), StatusCode = 500, RequestBody = "", ResponseBody = "" },
+            new DebugEntry { Timestamp = now.AddMinutes(-5), StatusCode = 200, RequestBody = "", ResponseBody = "" }
+        };
+
+        var trend = HtmlRenderer.ComputeErrorRateTrend(entries, options);
+        Assert.Contains("dbp-trend--worse", trend);
+        Assert.Contains("\u2191", trend);
+    }
+
+    [Fact]
+    public void Compute_error_rate_trend_indicates_better_when_error_rate_decreases()
+    {
+        var options = new DebugProbeOptions { LookbackMinutes = 15 };
+        var now = DateTimeOffset.UtcNow;
+        var entries = new List<DebugEntry>
+        {
+            // Previous window: 2 requests, 1 error => 50% error rate
+            new DebugEntry { Timestamp = now.AddMinutes(-20), StatusCode = 500, RequestBody = "", ResponseBody = "" },
+            new DebugEntry { Timestamp = now.AddMinutes(-25), StatusCode = 200, RequestBody = "", ResponseBody = "" },
+            // Current window: 2 requests, 0 errors => 0% error rate
+            new DebugEntry { Timestamp = now.AddMinutes(-2), StatusCode = 200, RequestBody = "", ResponseBody = "" },
+            new DebugEntry { Timestamp = now.AddMinutes(-5), StatusCode = 200, RequestBody = "", ResponseBody = "" }
+        };
+
+        var trend = HtmlRenderer.ComputeErrorRateTrend(entries, options);
+        Assert.Contains("dbp-trend--better", trend);
+        Assert.Contains("\u2193", trend);
+    }
 }

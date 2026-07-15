@@ -33,6 +33,9 @@ public class DebugProbeOptions
     /// </summary>
     public int SlowRequestThresholdMs { get; set; } = 1000;
 
+    public int LookbackMinutes { get; set; } = 15;
+
+
     /// <summary>
     /// Allows compare operations to target localhost and private network addresses.
     /// Defaults to true in Development and false in other environments unless explicitly configured.

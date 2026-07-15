@@ -99,6 +99,9 @@ internal static class HtmlRenderer
         </div>";
         }
 
+        var sparklineHtml = BuildRequestRateSparkline(items, options);
+        var errorRateTrendHtml = ComputeErrorRateTrend(items, options);
+
         var pageHtml = EmbeddedResources.Index;
         if (!string.IsNullOrEmpty(exceptionPanel))
         {
@@ -113,10 +116,10 @@ internal static class HtmlRenderer
             .Replace("{{rows}}", rows)
             .Replace("{{total_count}}", items.Count.ToString())
             .Replace("{{method_options}}", methodOptions)
-            .Replace("{{total_requests}}", FormatCompactNumber(totalRequests))
+            .Replace("{{total_requests}}", FormatCompactNumber(totalRequests) + sparklineHtml)
             .Replace("{{avg_response_time}}", $"{averageResponseMs} ms")
             .Replace("{{slow_requests}}", FormatCompactNumber(slowRequests))
-            .Replace("{{error_rate}}", $"{errorRate:0.#}%"));
+            .Replace("{{error_rate}}", $"{errorRate:0.#}%" + errorRateTrendHtml));
     }
 
     public static string RenderDetailsPage(DebugEntry x, DebugEnvironment e, string req, string res, DebugProbeOptions? options = null)
@@ -560,4 +563,109 @@ internal static class HtmlRenderer
         return string.Empty;
     }
 
+    /// <summary>
+    /// Builds an SVG sparkline showing request rate over the configured lookback window.
+    /// </summary>
+    internal static string BuildRequestRateSparkline(List<DebugEntry> items, DebugProbeOptions options)
+    {
+        var lookback = options.LookbackMinutes;
+        if (lookback <= 0)
+        {
+            return string.Empty;
+        }
+
+        var now = DateTime.UtcNow;
+        var buckets = new int[lookback];
+
+        foreach (var entry in items)
+        {
+            var diff = now - entry.Timestamp.UtcDateTime;
+            var minutesAgo = (int)diff.TotalMinutes;
+            if (minutesAgo < 0) minutesAgo = 0;
+            if (minutesAgo < lookback)
+            {
+                buckets[lookback - 1 - minutesAgo]++;
+            }
+        }
+
+        const int w = 120;
+        const int h = 24;
+        var maxCount = buckets.Max();
+
+        var points = new List<string>();
+        for (int i = 0; i < lookback; i++)
+        {
+            double x = lookback > 1 ? (double)i / (lookback - 1) * w : 0;
+            double y = maxCount == 0 ? h - 2 : h - 2 - ((double)buckets[i] / maxCount * (h - 4));
+            points.Add($"{x:0.#},{y:0.#}");
+        }
+
+        var pointsStr = string.Join(" ", points);
+
+        return $@"<svg width=""{w}"" height=""{h}"" viewBox=""0 0 {w} {h}"" class=""dbp-sparkline"" style=""display: inline-block; vertical-align: middle; margin-left: 8px;"" aria-label=""Request rate sparkline""><polyline fill=""none"" stroke=""#6c5ce7"" stroke-width=""2"" stroke-linecap=""round"" stroke-linejoin=""round"" points=""{pointsStr}""/></svg>";
+    }
+
+    /// <summary>
+    /// Computes error rate trends comparing the current window to the previous window.
+    /// </summary>
+    internal static string ComputeErrorRateTrend(List<DebugEntry> items, DebugProbeOptions options)
+    {
+        var lookback = options.LookbackMinutes;
+        if (lookback <= 0)
+        {
+            return string.Empty;
+        }
+
+        var now = DateTime.UtcNow;
+        var currentStart = now.AddMinutes(-lookback);
+        var previousStart = now.AddMinutes(-2 * lookback);
+
+        var currentCount = 0;
+        var currentErrors = 0;
+        var previousCount = 0;
+        var previousErrors = 0;
+
+        foreach (var entry in items)
+        {
+            var entryTime = entry.Timestamp.UtcDateTime;
+            if (entryTime >= currentStart && entryTime <= now)
+            {
+                currentCount++;
+                if (entry.StatusCode >= 400)
+                {
+                    currentErrors++;
+                }
+            }
+            else if (entryTime >= previousStart && entryTime < currentStart)
+            {
+                previousCount++;
+                if (entry.StatusCode >= 400)
+                {
+                    previousErrors++;
+                }
+            }
+        }
+
+        if (previousCount == 0)
+        {
+            return string.Empty;
+        }
+
+        var currentRate = currentCount == 0 ? 0.0 : (double)currentErrors / currentCount;
+        var previousRate = (double)previousErrors / previousCount;
+
+        if (Math.Abs(currentRate - previousRate) < 0.0001)
+        {
+            return string.Empty;
+        }
+
+        if (currentRate > previousRate)
+        {
+            return $"<span class=\"dbp-trend dbp-trend--worse\" style=\"color: #e74c3c; margin-left: 4px; font-weight: bold;\" title=\"Error rate increased from {previousRate * 100:0.#}% to {currentRate * 100:0.#}%\">\u2191</span>";
+        }
+        else
+        {
+            return $"<span class=\"dbp-trend dbp-trend--better\" style=\"color: #27ae60; margin-left: 4px; font-weight: bold;\" title=\"Error rate decreased from {previousRate * 100:0.#}% to {currentRate * 100:0.#}%\">\u2193</span>";
+        }
+    }
 }
