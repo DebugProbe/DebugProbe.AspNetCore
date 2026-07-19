@@ -17,6 +17,14 @@ internal sealed class DebugProbeOptionsValidator
                 $"Provided value: {options.MaxEntries}.");
         }
 
+        if (options.TrendLookbackMinutes < 2)
+        {
+            return ValidateOptionsResult.Fail(
+                $"DebugProbe configuration is invalid. " +
+                $"TrendLookbackMinutes must be greater than or equal to 2 (to allow splitting into two windows). " +
+                $"Provided value: {options.TrendLookbackMinutes}.");
+        }
+
         if (!string.IsNullOrWhiteSpace(options.ServerUrl) &&
             (!Uri.TryCreate(options.ServerUrl, UriKind.Absolute, out var serverUri) ||
              (serverUri.Scheme != Uri.UriSchemeHttp && serverUri.Scheme != Uri.UriSchemeHttps)))
