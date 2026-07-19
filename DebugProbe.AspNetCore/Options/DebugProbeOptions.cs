@@ -34,6 +34,12 @@ public class DebugProbeOptions
     public int SlowRequestThresholdMs { get; set; } = 1000;
 
     /// <summary>
+    /// Lookback window in minutes for the request rate sparkline and error rate trend.
+    /// Defaults to 30. Must be greater than or equal to 2.
+    /// </summary>
+    public int TrendLookbackMinutes { get; set; } = 2;
+
+    /// <summary>
     /// Allows compare operations to target localhost and private network addresses.
     /// Defaults to true in Development and false in other environments unless explicitly configured.
     /// </summary>

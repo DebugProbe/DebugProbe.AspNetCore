@@ -20,8 +20,14 @@
             <span>Over 1s</span>
         </div>
         <div class="stat-tile">
-            <strong>{{error_rate}}</strong>
+            <strong>{{error_rate}}{{error_trend}}</strong>
             <span>Errors</span>
+        </div>
+        <div class="stat-tile">
+            <div style="display: flex; align-items: center; justify-content: center; height: 28px; width: 120px;">
+                {{sparkline}}
+            </div>
+            <span>Activity</span>
         </div>
     </div>
 

@@ -35,4 +35,6 @@ app.MapGet("/delay/{milliseconds}", async (int milliseconds) =>
     return Results.Ok(new { delayedMs = milliseconds });
 });
 
+app.MapControllers();
+
 app.Run();

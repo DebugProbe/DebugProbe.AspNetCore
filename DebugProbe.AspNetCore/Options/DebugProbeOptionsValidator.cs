@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Options;
 
 namespace DebugProbe.AspNetCore.Options;
 
@@ -15,6 +15,14 @@ internal sealed class DebugProbeOptionsValidator
                 $"DebugProbe configuration is invalid. " +
                 $"MaxEntries must be greater than or equal to 1. " +
                 $"Provided value: {options.MaxEntries}.");
+        }
+
+        if (options.TrendLookbackMinutes < 2)
+        {
+            return ValidateOptionsResult.Fail(
+                $"DebugProbe configuration is invalid. " +
+                $"TrendLookbackMinutes must be greater than or equal to 2 (to allow splitting into two windows). " +
+                $"Provided value: {options.TrendLookbackMinutes}.");
         }
 
         return ValidateOptionsResult.Success;

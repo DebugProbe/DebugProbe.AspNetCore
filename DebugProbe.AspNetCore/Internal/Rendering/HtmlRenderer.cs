@@ -64,8 +64,91 @@ internal static class HtmlRenderer
         var slowRequests = slowRequestThresholdMs > 0 ? items.Count(x => x.DurationMs >= slowRequestThresholdMs) : 0;
         var errorRate = totalRequests == 0 ? 0 : items.Count(x => x.StatusCode >= 400) * 100d / totalRequests;
 
-        var exceptionPanel = "";
+        // Trend calculations
         var store = DebugEntryStore.Instance;
+        var now = DateTimeOffset.UtcNow;
+        var limitTime = now.AddMinutes(-options.TrendLookbackMinutes);
+        var midTime = now.AddMinutes(-options.TrendLookbackMinutes / 2.0);
+
+        int[] buckets = new int[options.TrendLookbackMinutes];
+        int totalA = 0;
+        int errorsA = 0;
+        int totalB = 0;
+        int errorsB = 0;
+
+        foreach (var entry in items)
+        {
+            var t = entry.Timestamp;
+            var elapsed = now - t;
+            if (elapsed.TotalMinutes < options.TrendLookbackMinutes)
+            {
+                double mins = Math.Max(0.0, elapsed.TotalMinutes);
+                int bucketIndex = options.TrendLookbackMinutes - 1 - (int)Math.Floor(mins);
+                if (bucketIndex >= 0 && bucketIndex < options.TrendLookbackMinutes)
+                {
+                    buckets[bucketIndex]++;
+                }
+            }
+
+            if (t >= midTime)
+            {
+                totalA++;
+                if (entry.StatusCode >= 400)
+                {
+                    errorsA++;
+                }
+            }
+            else if (t >= limitTime && t < midTime)
+            {
+                totalB++;
+                if (entry.StatusCode >= 400)
+                {
+                    errorsB++;
+                }
+            }
+        }
+
+        int maxVal = buckets.Max();
+        var pointsList = new List<string>();
+        for (int i = 0; i < options.TrendLookbackMinutes; i++)
+        {
+            double x = (double)i / (options.TrendLookbackMinutes - 1) * 120.0;
+            double y = maxVal == 0 ? 14.0 : 26.0 - ((double)buckets[i] / maxVal * 24.0);
+            pointsList.Add($"{x:0.##},{y:0.##}");
+        }
+        string pointsString = string.Join(" ", pointsList);
+
+        string sparklineSvg = $@"<svg width=""120"" height=""28"" viewBox=""0 0 120 28"" style=""overflow: visible;"" xmlns=""http://www.w3.org/2000/svg""><polyline fill=""none"" stroke=""#6c5ce7"" stroke-width=""2"" stroke-linecap=""round"" stroke-linejoin=""round"" points=""{pointsString}"" /></svg>";
+
+        double errorRateA = totalA == 0 ? 0.0 : (double)errorsA / totalA;
+        double errorRateB = totalB == 0 ? 0.0 : (double)errorsB / totalB;
+
+        string trendArrow;
+        string arrowClass;
+        if (totalA == 0 || totalB == 0)
+        {
+            trendArrow = "→";
+            arrowClass = "trend-neutral";
+        }
+        else if (errorRateA > errorRateB)
+        {
+            trendArrow = "↑";
+            arrowClass = "trend-up";
+        }
+        else if (errorRateA < errorRateB)
+        {
+            trendArrow = "↓";
+            arrowClass = "trend-down";
+        }
+        else
+        {
+            trendArrow = "→";
+            arrowClass = "trend-neutral";
+        }
+
+        string errorTrendHtml = $" <span class=\"trend-arrow {arrowClass}\" title=\"vs preceding period\">{trendArrow}</span>";
+
+        var exceptionPanel = "";
         if (store != null && !store.ExceptionGroups.IsEmpty)
         {
             var sortedGroups = store.ExceptionGroups.Values
@@ -116,7 +199,9 @@ internal static class HtmlRenderer
             .Replace("{{total_requests}}", FormatCompactNumber(totalRequests))
             .Replace("{{avg_response_time}}", $"{averageResponseMs} ms")
             .Replace("{{slow_requests}}", FormatCompactNumber(slowRequests))
-            .Replace("{{error_rate}}", $"{errorRate:0.#}%"));
+            .Replace("{{error_rate}}", $"{errorRate:0.#}%")
+            .Replace("{{error_trend}}", errorTrendHtml)
+            .Replace("{{sparkline}}", sparklineSvg));
     }
 
     public static string RenderDetailsPage(DebugEntry x, DebugEnvironment e, string req, string res, DebugProbeOptions? options = null)
