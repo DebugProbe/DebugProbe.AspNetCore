@@ -8,7 +8,7 @@
 		<NoWarn>1591</NoWarn>
 
 		<PackageId>DebugProbe.AspNetCore</PackageId>
-		<Version>1.6.9</Version>
+		<Version>1.6.10</Version>
 
 		<Authors>Georgi Hristov</Authors>
 
@@ -19,11 +19,10 @@
 		<PackageReleaseNotes>
 			## What's New
 
-			- Added configurable slow request and dependency badges to highlight performance bottlenecks.
-			- Added Markdown export for captured traces to simplify sharing in GitHub issues, pull requests, and documentation.
-			- Improved diagnostics and collaboration with quick, reusable trace summaries.
-
-			Thanks to @DevSars24 for the community contributions.
+			- Added URL-persistent dashboard filters that survive page refreshes and direct links.
+			- Added request rate sparkline, error trend indicators, and keyboard shortcuts to the dashboard.
+			- Fixed dashboard error trend calculations and added regression tests.
+			- Fixed endpoint routing validation by detecting missing controller mapping.
 		</PackageReleaseNotes>
 		
 		<PackageIcon>icon.png</PackageIcon>
