@@ -25,6 +25,15 @@ internal sealed class DebugProbeOptionsValidator
                 $"Provided value: {options.TrendLookbackMinutes}.");
         }
 
+        if (options.AllowRedactionPreview && options.AllowUiInProduction)
+        {
+            return ValidateOptionsResult.Fail(
+                "DebugProbe configuration is invalid. " +
+                "AllowRedactionPreview = true combined with AllowUiInProduction = true is not allowed. " +
+                "Enabling both could expose pre-redaction secret values through the UI in a production environment. " +
+                "Either disable AllowRedactionPreview or keep AllowUiInProduction = false.");
+        }
+
         return ValidateOptionsResult.Success;
     }
 }

@@ -111,4 +111,21 @@ public class DebugProbeOptions
             ? "/debug"
             : "/" + value.TrimStart('/');
     }
+
+    /// <summary>
+    /// Enables the redaction preview toggle on the trace detail page.
+    /// When <c>true</c> <b>and</b> the application is running in a local/Development
+    /// environment, a "Reveal original" button is shown on the detail page that
+    /// displays the pre-redaction values captured at request time.
+    /// <para>
+    /// Both conditions must be met — this flag alone is not sufficient.
+    /// The environment check is enforced server-side in <c>HtmlRenderer</c>.
+    /// </para>
+    /// <para>
+    /// Setting this to <c>true</c> together with <c>AllowUiInProduction = true</c>
+    /// will throw an <see cref="InvalidOperationException"/> at startup, because
+    /// doing so could expose raw secrets via the UI in production.
+    /// </para>
+    /// </summary>
+    public bool AllowRedactionPreview { get; set; } = false;
 }

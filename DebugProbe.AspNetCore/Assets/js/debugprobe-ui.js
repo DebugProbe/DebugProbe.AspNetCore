@@ -278,6 +278,31 @@ function copyAsMarkdown(btn) {
 }
 
 
+/**
+ * Toggles the pin state of a trace entry.
+ * On success the page reloads so the pinned section renders server-side.
+ * On 409 Conflict (pin cap reached) an alert is shown with the server error.
+ * @param {string} id - The trace entry ID.
+ * @param {string} prefix - The DebugProbe route prefix (e.g. "/debug").
+ */
+async function togglePin(id, prefix) {
+    try {
+        const res = await fetch(`${prefix}/pin/${encodeURIComponent(id)}`, { method: "POST" });
+        if (res.status === 409) {
+            const body = await res.json().catch(() => ({}));
+            alert(body.error ?? "Pin cap reached. Unpin an existing entry first.");
+            return;
+        }
+        if (!res.ok) {
+            alert("Failed to update pin state. Please try again.");
+            return;
+        }
+        location.reload();
+    } catch (e) {
+        alert("Network error while updating pin state.");
+    }
+}
+
 const clearBtn = document.getElementById("clearBtn");
 if (clearBtn) {
     clearBtn.addEventListener("click", async () => {

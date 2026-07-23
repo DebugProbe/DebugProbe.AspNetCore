@@ -474,6 +474,11 @@ table {
     width: 100px;
 }
 
+#requestTable th:nth-child(6),
+#requestTable td:nth-child(6) {
+    width: 110px;
+}
+
 .table-wrap {
     overflow-x: auto;
     background: #fff;
@@ -1027,6 +1032,85 @@ pre {
     background: rgba(231, 76, 60, 0.1);
     color: #c0392b;
     border: 1px solid rgba(231, 76, 60, 0.25);
+}
+
+.dbp-badge-pinned {
+    background: rgba(108, 92, 231, 0.12);
+    color: #6c5ce7;
+    border: 1px solid rgba(108, 92, 231, 0.28);
+}
+
+/* Pin / unpin button in the dashboard table */
+.pin-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 26px;
+    padding: 0 8px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    color: #6b7280;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.pin-btn:hover {
+    background: #f5f3ff;
+    border-color: #6c5ce7;
+    color: #6c5ce7;
+}
+
+.pin-btn--active {
+    background: rgba(108, 92, 231, 0.08);
+    border-color: rgba(108, 92, 231, 0.35);
+    color: #6c5ce7;
+}
+
+.pin-btn--active:hover {
+    background: rgba(108, 92, 231, 0.15);
+}
+
+/* Pinned row highlight in the main table */
+.pinned-row {
+    background: rgba(108, 92, 231, 0.04);
+}
+
+.pinned-row:hover {
+    background: rgba(108, 92, 231, 0.09);
+}
+
+/* Redaction preview toggle on detail page */
+.redaction-preview-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(231, 76, 60, 0.07);
+    border: 1px solid rgba(231, 76, 60, 0.22);
+    border-radius: 6px;
+    color: #b42318;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.redaction-preview-toggle:hover {
+    background: rgba(231, 76, 60, 0.14);
+}
+
+.redaction-original-value {
+    display: inline-block;
+    margin-top: 2px;
+    padding: 1px 6px;
+    background: rgba(231, 76, 60, 0.08);
+    border: 1px dashed rgba(231, 76, 60, 0.3);
+    border-radius: 4px;
+    color: #b42318;
+    font-size: 11px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
 }
 
 /* =========================

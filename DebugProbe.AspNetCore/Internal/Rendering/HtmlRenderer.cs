@@ -45,6 +45,7 @@ internal static class HtmlRenderer
         options ??= new DebugProbeOptions();
         var slowRequestThresholdMs = options.SlowRequestThresholdMs;
         var store = DebugEntryStore.Instance;
+        var prefix = options.RoutePrefix;
 
         var routesWithDiffs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var routeDiffTooltips = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -89,7 +90,39 @@ internal static class HtmlRenderer
             }
         }
 
-        var rows = string.Join("", items.Select(x =>
+        // Build pinned-entries section (shown above the normal table)
+        var pinnedItems = items.Where(x => x.IsPinned).ToList();
+        var pinnedSectionHtml = "";
+        if (pinnedItems.Count > 0)
+        {
+            var pinnedRows = string.Join("", pinnedItems.Select(x =>
+            {
+                var pathWithQuery = string.IsNullOrEmpty(x.Query) ? x.Path : $"{x.Path}{x.Query}";
+                var badge = RenderSlowBadge(TimeSpan.FromMilliseconds(x.DurationMs), options);
+                var badgeHtml = string.IsNullOrEmpty(badge) ? "" : " " + badge;
+                return $@"<tr data-url=""{Encode(prefix)}/{Encode(x.Id)}"" data-method=""{Encode(x.Method)}"" data-status-family=""{x.StatusCode / 100}"" data-search=""{Encode($"{x.Id} {x.Method} {x.Path} {x.Query} {x.StatusCode}")}"" class=""clickable-row pinned-row""><td>{x.Timestamp:HH:mm:ss}</td><td><span class=""method-pill"">{Encode(x.Method)}</span></td><td class=""request-path""><span class=""request-path-value"" title=""{Encode(pathWithQuery)}"">{Encode(pathWithQuery)}</span></td><td><span class=""status {GetStatusClass(x.StatusCode)}"">{x.StatusCode}</span></td><td>{x.DurationMs} ms{badgeHtml}</td><td><button class=""pin-btn pin-btn--active"" type=""button"" title=""Unpin this trace"" aria-label=""Unpin this trace"" onclick=""event.stopPropagation(); togglePin('{Encode(x.Id)}', '{Encode(prefix)}')"" >📌 Pinned</button></td></tr>";
+            }));
+
+            pinnedSectionHtml = $@"
+        <h3 style=""display:flex;align-items:center;gap:8px;margin-top:0;"">📌 Pinned Traces <span class=""dbp-badge dbp-badge-pinned"">{pinnedItems.Count}</span></h3>
+        <div class=""table-wrap"" style=""margin-bottom:20px;border-color:#6c5ce7;"">
+            <table style=""table-layout:fixed;"">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Method</th>
+                        <th>Path</th>
+                        <th>Status</th>
+                        <th>Duration</th>
+                        <th style=""width:110px;"">Pin</th>
+                    </tr>
+                </thead>
+                <tbody>{pinnedRows}</tbody>
+            </table>
+        </div>";
+        }
+
+        var rows = string.Join("", items.Where(x => !x.IsPinned).Select(x =>
         {
             var pathWithQuery = string.IsNullOrEmpty(x.Query) ? x.Path : $"{x.Path}{x.Query}";
             var badge = RenderSlowBadge(TimeSpan.FromMilliseconds(x.DurationMs), options);
@@ -108,22 +141,11 @@ internal static class HtmlRenderer
                 }
             }
 
-            return $@"
-        <tr data-url=""/debug/{Encode(x.Id)}""
-            data-method=""{Encode(x.Method)}""
-            data-status-family=""{x.StatusCode / 100}""
-            data-search=""{Encode($"{x.Id} {x.Method} {x.Path} {x.Query} {x.StatusCode}")}""
-            class=""clickable-row"">
-            <td>{x.Timestamp:HH:mm:ss}</td>
-            <td><span class=""method-pill"">{Encode(x.Method)}</span></td>
-            <td class=""request-path""><span class=""request-path-value"" title=""{Encode(pathWithQuery)}"">{Encode(pathWithQuery)}</span>{envDiffBadgeHtml}</td>
-            <td><span class=""status {GetStatusClass(x.StatusCode)}"">{x.StatusCode}</span></td>
-            <td>{x.DurationMs} ms{badgeHtml}</td>
-        </tr>";
+            return $@"<tr data-url=""{Encode(prefix)}/{Encode(x.Id)}"" data-method=""{Encode(x.Method)}"" data-status-family=""{x.StatusCode / 100}"" data-search=""{Encode($"{x.Id} {x.Method} {x.Path} {x.Query} {x.StatusCode}")}"" class=""clickable-row""><td>{x.Timestamp:HH:mm:ss}</td><td><span class=""method-pill"">{Encode(x.Method)}</span></td><td class=""request-path""><span class=""request-path-value"" title=""{Encode(pathWithQuery)}"">{Encode(pathWithQuery)}</span>{envDiffBadgeHtml}</td><td><span class=""status {GetStatusClass(x.StatusCode)}"">{x.StatusCode}</span></td><td>{x.DurationMs} ms{badgeHtml}</td><td><button class=""pin-btn"" type=""button"" title=""Pin this trace"" aria-label=""Pin this trace"" onclick=""event.stopPropagation(); togglePin('{Encode(x.Id)}', '{Encode(prefix)}')"" >☆ Pin</button></td></tr>";
         }));
 
         if (string.IsNullOrEmpty(rows))
-            rows = "<tr class='empty-row'><td colspan='5'>No data</td></tr>";
+            rows = "<tr class='empty-row'><td colspan='6'>No data</td></tr>";
 
         var methodOptions = string.Join("", items
             .Select(x => x.Method)
@@ -256,18 +278,25 @@ internal static class HtmlRenderer
         }
 
         var pageHtml = EmbeddedResources.Index;
-        if (!string.IsNullOrEmpty(exceptionPanel))
+
+        // Insert pinned section before the exception panel and before the main table.
+        // Both are injected before the first <div class="table-wrap"> in the template.
+        var insertionHtml = pinnedSectionHtml + (string.IsNullOrEmpty(exceptionPanel) ? "" : exceptionPanel);
+        if (!string.IsNullOrEmpty(insertionHtml))
         {
             var idx = pageHtml.IndexOf("<div class=\"table-wrap\">");
             if (idx >= 0)
             {
-                pageHtml = pageHtml.Insert(idx, exceptionPanel);
+                pageHtml = pageHtml.Insert(idx, insertionHtml);
             }
         }
 
+        // The unpinned count is what the visible table shows.
+        var unpinnedCount = items.Count(x => !x.IsPinned);
+
         return BuildLayout(pageHtml
             .Replace("{{rows}}", rows)
-            .Replace("{{total_count}}", items.Count.ToString())
+            .Replace("{{total_count}}", unpinnedCount.ToString())
             .Replace("{{method_options}}", methodOptions)
             .Replace("{{total_requests}}", FormatCompactNumber(totalRequests))
             .Replace("{{avg_response_time}}", $"{averageResponseMs} ms")
@@ -351,7 +380,104 @@ internal static class HtmlRenderer
             .Replace("{{incomingRequest}}", incomingRequest)
             .Replace("{{incomingResponse}}", incomingResponse);
 
+        // Gate 1: config. Gate 2: env. Both must be true for the preview to render.
+        // Enforced server-side here — there is no client-side CSS/JS gating.
+        var isDevEnv = string.Equals(e.Environment, "Development", StringComparison.OrdinalIgnoreCase);
+        if (options.AllowRedactionPreview && isDevEnv)
+        {
+            var previewBanner = BuildRedactionPreviewBanner(x);
+            // Insert the banner just before the first <section class="trace-flow"
+            const string insertionMarker = "<section class=\"trace-flow\"";
+            var insertAt = content.IndexOf(insertionMarker, StringComparison.Ordinal);
+            if (insertAt >= 0)
+            {
+                content = content.Insert(insertAt, previewBanner);
+            }
+        }
+
         return BuildLayout(content);
+    }
+
+    private static string BuildRedactionPreviewBanner(DebugEntry x)
+    {
+        var hasOriginals = x.OriginalRequestHeaders.Count > 0
+            || !string.IsNullOrWhiteSpace(x.OriginalRequestBody)
+            || !string.IsNullOrWhiteSpace(x.OriginalResponseBody)
+            || !string.IsNullOrWhiteSpace(x.OriginalQuery);
+
+        if (!hasOriginals)
+        {
+            return string.Empty;
+        }
+
+        var sections = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(x.OriginalQuery) && x.OriginalQuery != x.Query)
+        {
+            sections.Add(BuildOriginalValueSection("Original Query", x.OriginalQuery));
+        }
+
+        var diffHeaders = x.OriginalRequestHeaders
+            .Where(kv => !x.RequestHeaders.TryGetValue(kv.Key, out var redacted)
+                         || redacted != kv.Value)
+            .ToList();
+        if (diffHeaders.Count > 0)
+        {
+            var rows = string.Join("", diffHeaders.Select(kv =>
+                $@"<div class=""header-row""><span>{Encode(kv.Key)}</span><code class=""redaction-original-value"">{Encode(kv.Value)}</code></div>"));
+            sections.Add($@"
+        <details class=""payload-panel"">
+            <summary><span>Original Request Headers (with secrets)</span><small>{diffHeaders.Count} revealed</small></summary>
+            <div class=""headers-grid"">{rows}</div>
+        </details>");
+        }
+
+        if (!string.IsNullOrWhiteSpace(x.OriginalRequestBody) && x.OriginalRequestBody != x.RequestBody)
+        {
+            sections.Add(BuildOriginalValueSection("Original Request Body (with secrets)", x.OriginalRequestBody));
+        }
+
+        if (!string.IsNullOrWhiteSpace(x.OriginalResponseBody) && x.OriginalResponseBody != x.ResponseBody)
+        {
+            sections.Add(BuildOriginalValueSection("Original Response Body (with secrets)", x.OriginalResponseBody));
+        }
+
+        if (sections.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        return $@"
+        <details class=""trace-card"" style=""margin-bottom:8px;"">
+            <summary style=""display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border:1px solid rgba(231,76,60,0.25);border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;color:#b42318;list-style:none;"">
+                <span style=""color:#b42318;"">⚠</span>
+                <span>Redaction Preview — local only</span>
+                <small style=""font-weight:400;color:#6b7280;"">Showing pre-redaction values (AllowRedactionPreview=true, Development)</small>
+            </summary>
+            <div class=""trace-card-main"" style=""border-color:rgba(231,76,60,0.25);"">
+                <div class=""trace-details"">
+                    {string.Join("", sections)}
+                </div>
+            </div>
+        </details>";
+    }
+
+    private static string BuildOriginalValueSection(string title, string value)
+    {
+        var text = string.IsNullOrWhiteSpace(value) ? "" : JsonUtils.Format(value);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return string.Empty;
+        }
+
+        return $@"
+        <details class=""payload-panel"">
+            <summary><span>{Encode(title)}</span><small>original - {FormatBytes(text.Length)}</small></summary>
+            <div class=""code-block"">
+                <button class=""copy-btn"" type=""button"" onclick=""copyText(this)"">Copy</button>
+                <pre class=""redaction-original-value"">{Encode(text)}</pre>
+            </div>
+        </details>";
     }
 
     public static string RenderComparePage(string localTraceId, string baseUrl, string traceId)
@@ -716,6 +842,11 @@ internal static class HtmlRenderer
             return $@"<span class=""dbp-badge dbp-badge-slow"" title=""Exceeds {options.SlowRequestThresholdMs}ms threshold"">SLOW</span>";
         }
         return string.Empty;
+    }
+
+    private static string RenderPinnedBadge()
+    {
+        return @"<span class=""dbp-badge dbp-badge-pinned"">📌 Pinned</span>";
     }
 
 }

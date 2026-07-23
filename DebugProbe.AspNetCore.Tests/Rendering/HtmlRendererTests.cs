@@ -523,4 +523,126 @@ public class HtmlRendererTests
         Assert.Contains("999 ms</div>", html);
         Assert.DoesNotContain(" 999 ms <span class=\"dbp-badge dbp-badge-slow\"", html);
     }
+
+    // -----------------------------------------------------------------------
+    // Pin / Favorite feature: HtmlRenderer tests
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void Render_index_page_shows_pinned_section_when_entries_are_pinned()
+    {
+        var pinned = new DebugEntry
+        {
+            Id = "pinned-1",
+            Method = "GET",
+            Path = "/pinned-path",
+            StatusCode = 200,
+            IsPinned = true,
+            Timestamp = DateTimeOffset.UtcNow
+        };
+
+        var regular = new DebugEntry
+        {
+            Id = "regular-1",
+            Method = "POST",
+            Path = "/regular-path",
+            StatusCode = 201,
+            IsPinned = false,
+            Timestamp = DateTimeOffset.UtcNow
+        };
+
+        var html = HtmlRenderer.RenderIndexPage([pinned, regular]);
+
+        // Pinned section heading must appear
+        Assert.Contains("Pinned Traces", html);
+        Assert.Contains("dbp-badge-pinned", html);
+        Assert.Contains("pinned-row", html);
+        // Pinned entry must appear in both the header and the pinned section
+        Assert.Contains("/pinned-path", html);
+        // Pin button for the pinned entry must be the active (unpin) variant
+        Assert.Contains("pin-btn--active", html);
+        // Regular entry must also have a pin button (unpinned variant)
+        Assert.Contains("pin-btn", html);
+    }
+
+    [Fact]
+    public void Render_index_page_does_not_show_pinned_section_when_nothing_is_pinned()
+    {
+        var entries = new List<DebugEntry>
+        {
+            new() { Id = "r1", Method = "GET", Path = "/api/test", StatusCode = 200, Timestamp = DateTimeOffset.UtcNow },
+            new() { Id = "r2", Method = "POST", Path = "/api/data", StatusCode = 201, Timestamp = DateTimeOffset.UtcNow }
+        };
+
+        var html = HtmlRenderer.RenderIndexPage(entries);
+
+        Assert.DoesNotContain("Pinned Traces", html);
+        Assert.DoesNotContain("class=\"clickable-row pinned-row\"", html);
+        Assert.DoesNotContain("class=\"pin-btn pin-btn--active\"", html);
+        // Pin buttons for unpinned entries should still be present
+        Assert.Contains("class=\"pin-btn\"", html);
+    }
+
+
+
+    // -----------------------------------------------------------------------
+    // Redaction Preview feature: HtmlRenderer two-gate tests
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void Details_page_renders_redaction_preview_when_both_gates_are_true()
+    {
+        var entry = CreateEntry();
+        entry.RequestHeaders["X-Api-Key"] = "[REDACTED]";
+        entry.OriginalRequestHeaders["X-Api-Key"] = "secret-key-123";
+        entry.RequestBody = "{\"password\":\"[REDACTED]\"}";
+        entry.OriginalRequestBody = "{\"password\":\"super-secret\"}";
+
+        var env = new DebugEnvironment { Environment = "Development" };
+
+        var options = new DebugProbeOptions { AllowRedactionPreview = true };
+
+        var html = HtmlRenderer.RenderDetailsPage(entry, env, entry.RequestBody, "{}", options);
+
+        Assert.Contains("Redaction Preview — local only", html);
+        Assert.Contains("secret-key-123", html);
+        Assert.Contains("super-secret", html);
+    }
+
+    [Fact]
+    public void Details_page_does_not_render_preview_when_option_is_false_even_in_development()
+    {
+        var entry = CreateEntry();
+        entry.RequestHeaders["X-Api-Key"] = "[REDACTED]";
+        entry.OriginalRequestHeaders["X-Api-Key"] = "secret-key-123";
+
+        var env = new DebugEnvironment { Environment = "Development" };
+
+        var options = new DebugProbeOptions { AllowRedactionPreview = false };
+
+        var html = HtmlRenderer.RenderDetailsPage(entry, env, entry.RequestBody, "{}", options);
+
+        Assert.DoesNotContain("Redaction Preview — local only", html);
+        Assert.DoesNotContain("secret-key-123", html);
+    }
+
+    [Fact]
+    public void Details_page_does_not_render_preview_in_production_even_if_option_is_true()
+    {
+        var entry = CreateEntry();
+        entry.RequestHeaders["X-Api-Key"] = "[REDACTED]";
+        entry.OriginalRequestHeaders["X-Api-Key"] = "secret-key-123";
+
+        var env = new DebugEnvironment { Environment = "Production" };
+
+        var options = new DebugProbeOptions { AllowRedactionPreview = true };
+
+        var html = HtmlRenderer.RenderDetailsPage(entry, env, entry.RequestBody, "{}", options);
+
+        Assert.DoesNotContain("Redaction Preview — local only", html);
+        Assert.DoesNotContain("secret-key-123", html);
+    }
 }
+
+
+

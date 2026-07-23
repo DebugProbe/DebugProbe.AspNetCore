@@ -150,6 +150,22 @@ public class DebugProbeMiddleware
                     x => x.Key,
                     x => RedactionUtils.RedactHeader(x.Key, x.Value.ToString(), _options));
 
+            // Capture pre-redaction originals for the redaction preview toggle.
+            // Only done when explicitly enabled — stores raw values in memory.
+            if (_options.AllowRedactionPreview)
+            {
+                entry.OriginalQuery = context.Request.QueryString.ToString();
+
+                entry.OriginalRequestHeaders =
+                    context.Request.Headers.ToDictionary(
+                        x => x.Key,
+                        x => x.Value.ToString());
+
+                entry.OriginalRequestBody = HttpContentUtils.Trim(requestBody, maxBodySize);
+
+                entry.OriginalResponseBody = HttpContentUtils.Trim(responseBody, maxBodySize);
+            }
+
             store.Add(entry);
         }
     }

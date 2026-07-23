@@ -125,4 +125,21 @@ public class DebugProbeOptionsTests
         var options = provider.GetRequiredService<DebugProbeOptions>();
         Assert.Equal(500, options.SlowRequestThresholdMs);
     }
+
+    [Fact]
+    public void AllowRedactionPreview_true_and_AllowUiInProduction_true_throws_InvalidOperationException()
+    {
+        var services = new ServiceCollection();
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            services.AddDebugProbe(options =>
+            {
+                options.AllowRedactionPreview = true;
+                options.AllowUiInProduction = true;
+            }));
+
+        Assert.Contains("AllowRedactionPreview", exception.Message);
+        Assert.Contains("AllowUiInProduction", exception.Message);
+    }
 }
+
