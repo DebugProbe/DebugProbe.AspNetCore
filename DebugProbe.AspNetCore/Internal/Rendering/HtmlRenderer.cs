@@ -380,7 +380,104 @@ internal static class HtmlRenderer
             .Replace("{{incomingRequest}}", incomingRequest)
             .Replace("{{incomingResponse}}", incomingResponse);
 
+        // Gate 1: config. Gate 2: env. Both must be true for the preview to render.
+        // Enforced server-side here — there is no client-side CSS/JS gating.
+        var isDevEnv = string.Equals(e.Environment, "Development", StringComparison.OrdinalIgnoreCase);
+        if (options.AllowRedactionPreview && isDevEnv)
+        {
+            var previewBanner = BuildRedactionPreviewBanner(x);
+            // Insert the banner just before the first <section class="trace-flow"
+            const string insertionMarker = "<section class=\"trace-flow\"";
+            var insertAt = content.IndexOf(insertionMarker, StringComparison.Ordinal);
+            if (insertAt >= 0)
+            {
+                content = content.Insert(insertAt, previewBanner);
+            }
+        }
+
         return BuildLayout(content);
+    }
+
+    private static string BuildRedactionPreviewBanner(DebugEntry x)
+    {
+        var hasOriginals = x.OriginalRequestHeaders.Count > 0
+            || !string.IsNullOrWhiteSpace(x.OriginalRequestBody)
+            || !string.IsNullOrWhiteSpace(x.OriginalResponseBody)
+            || !string.IsNullOrWhiteSpace(x.OriginalQuery);
+
+        if (!hasOriginals)
+        {
+            return string.Empty;
+        }
+
+        var sections = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(x.OriginalQuery) && x.OriginalQuery != x.Query)
+        {
+            sections.Add(BuildOriginalValueSection("Original Query", x.OriginalQuery));
+        }
+
+        var diffHeaders = x.OriginalRequestHeaders
+            .Where(kv => !x.RequestHeaders.TryGetValue(kv.Key, out var redacted)
+                         || redacted != kv.Value)
+            .ToList();
+        if (diffHeaders.Count > 0)
+        {
+            var rows = string.Join("", diffHeaders.Select(kv =>
+                $@"<div class=""header-row""><span>{Encode(kv.Key)}</span><code class=""redaction-original-value"">{Encode(kv.Value)}</code></div>"));
+            sections.Add($@"
+        <details class=""payload-panel"">
+            <summary><span>Original Request Headers (with secrets)</span><small>{diffHeaders.Count} revealed</small></summary>
+            <div class=""headers-grid"">{rows}</div>
+        </details>");
+        }
+
+        if (!string.IsNullOrWhiteSpace(x.OriginalRequestBody) && x.OriginalRequestBody != x.RequestBody)
+        {
+            sections.Add(BuildOriginalValueSection("Original Request Body (with secrets)", x.OriginalRequestBody));
+        }
+
+        if (!string.IsNullOrWhiteSpace(x.OriginalResponseBody) && x.OriginalResponseBody != x.ResponseBody)
+        {
+            sections.Add(BuildOriginalValueSection("Original Response Body (with secrets)", x.OriginalResponseBody));
+        }
+
+        if (sections.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        return $@"
+        <details class=""trace-card"" style=""margin-bottom:8px;"">
+            <summary style=""display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border:1px solid rgba(231,76,60,0.25);border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;color:#b42318;list-style:none;"">
+                <span style=""color:#b42318;"">⚠</span>
+                <span>Redaction Preview — local only</span>
+                <small style=""font-weight:400;color:#6b7280;"">Showing pre-redaction values (AllowRedactionPreview=true, Development)</small>
+            </summary>
+            <div class=""trace-card-main"" style=""border-color:rgba(231,76,60,0.25);"">
+                <div class=""trace-details"">
+                    {string.Join("", sections)}
+                </div>
+            </div>
+        </details>";
+    }
+
+    private static string BuildOriginalValueSection(string title, string value)
+    {
+        var text = string.IsNullOrWhiteSpace(value) ? "" : JsonUtils.Format(value);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return string.Empty;
+        }
+
+        return $@"
+        <details class=""payload-panel"">
+            <summary><span>{Encode(title)}</span><small>original - {FormatBytes(text.Length)}</small></summary>
+            <div class=""code-block"">
+                <button class=""copy-btn"" type=""button"" onclick=""copyText(this)"">Copy</button>
+                <pre class=""redaction-original-value"">{Encode(text)}</pre>
+            </div>
+        </details>";
     }
 
     public static string RenderComparePage(string localTraceId, string baseUrl, string traceId)

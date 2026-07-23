@@ -11,7 +11,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDebugProbe(options =>
 {
     options.MaxEntries = 10;
-    options.AllowUiInProduction = true;
+    options.RedactedHeaders = [.. options.RedactedHeaders, "X-Api-Key"];
+    options.AllowRedactionPreview = false;
 });
 
 var app = builder.Build();

@@ -60,14 +60,20 @@ public class DebugEntryStore
     // The lock scope is deliberately narrow (just the trim loop) so it is not on the hot path.
     private readonly object _trimLock = new();
 
-    public DebugEntryStore(DebugProbeOptions options)
+    public DebugEntryStore(DebugProbeOptions options, Microsoft.Extensions.Hosting.IHostEnvironment? hostEnvironment = null)
     {
         Instance = this;
         _limit = options.MaxEntries;
 
+        var envName = hostEnvironment?.EnvironmentName;
+        if (string.IsNullOrWhiteSpace(envName))
+        {
+            envName = EnvironmentUtils.TryGetEnvironment();
+        }
+
         Environment = new DebugEnvironment
         {
-            Environment = EnvironmentUtils.TryGetEnvironment(),
+            Environment = envName,
             MachineName = System.Environment.MachineName,
             AssemblyVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(),
             TimeZone = TimeZoneInfo.Local.DisplayName,
