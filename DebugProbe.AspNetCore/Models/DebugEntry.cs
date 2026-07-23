@@ -32,5 +32,7 @@ public class DebugEntry
 
     public DateTimeOffset Timestamp { get; set; }
 
+    public bool IsPinned { get; set; }
+
     public List<DebugOutgoingRequest> OutgoingRequests { get; set; } = [];
 }

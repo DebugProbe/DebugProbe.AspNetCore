@@ -13,10 +13,26 @@ namespace DebugProbe.AspNetCore.Storage;
 /// <summary>
 /// Stores captured DebugProbe entries in memory.
 /// </summary>
+/// <remarks>
+/// Storage approach (Option B): The existing ConcurrentQueue&lt;DebugEntry&gt; handles the normal
+/// FIFO unpinned stream. A separate ConcurrentDictionary&lt;string, DebugEntry&gt; holds pinned
+/// entries, which are excluded from normal FIFO eviction. Both collections are merged at read
+/// time (GetAll, Get). Total entry count (pinned + unpinned) is still bounded by MaxEntries.
+///
+/// Clear() resets both collections — it is a full-session reset; leaving ghost pinned entries
+/// from a prior session would create a confusing split-brain state on the dashboard.
+/// </remarks>
 public class DebugEntryStore
 {
     private static readonly Regex GuidRegex = new(@"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b", RegexOptions.Compiled);
     private static readonly Regex NumberRegex = new(@"\b\d+(\.\d+)?\b", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Maximum number of entries that may be simultaneously pinned.
+    /// Hardcoded as a constant — pin is a session debugging tool, 5 is generous,
+    /// and exposing this as a config property would add API surface for marginal benefit.
+    /// </summary>
+    public const int MaxPinnedEntries = 5;
 
     /// <summary>
     /// Gets the static instance of DebugEntryStore.
@@ -33,9 +49,16 @@ public class DebugEntryStore
     /// </summary>
     public DebugEnvironment Environment { get; }
 
+    // Option B: separate collections for unpinned (FIFO) and pinned (protected) entries.
     private readonly ConcurrentQueue<DebugEntry> _queue = new();
+    private readonly ConcurrentDictionary<string, DebugEntry> _pinned = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, DebugEnvironment> _entryEnvironments = new();
     private readonly int _limit;
+
+    // Lock used only during the capacity-trim step in Add() to prevent races
+    // between concurrent callers when both the pinned and unpinned counts are near the limit.
+    // The lock scope is deliberately narrow (just the trim loop) so it is not on the hot path.
+    private readonly object _trimLock = new();
 
     public DebugEntryStore(DebugProbeOptions options)
     {
@@ -92,13 +115,76 @@ public class DebugEntryStore
                 });
         }
 
-        while (_queue.Count > _limit)
+        // Trim unpinned entries until total (pinned + unpinned) fits within MaxEntries.
+        // Only unpinned entries are evicted; pinned entries are protected.
+        // The narrow lock here prevents two concurrent Add() calls from both reading
+        // stale counts and over-trimming or under-trimming.
+        lock (_trimLock)
         {
-            // ExceptionGroups counts are a running tally and must NOT be decremented on MaxEntries eviction.
-            if (_queue.TryDequeue(out var evicted) && evicted.Id != null)
+            while (_queue.Count + _pinned.Count > _limit)
             {
-                _entryEnvironments.TryRemove(evicted.Id, out _);
+                // ExceptionGroups counts are a running tally and must NOT be decremented on eviction.
+                if (_queue.TryDequeue(out var evicted) && evicted.Id != null)
+                {
+                    _entryEnvironments.TryRemove(evicted.Id, out _);
+                }
+                else
+                {
+                    // Queue is empty — all remaining capacity is consumed by pinned entries.
+                    break;
+                }
             }
+        }
+    }
+
+    /// <summary>
+    /// Attempts to toggle the pinned state of the entry with the given ID.
+    /// Returns (success: true, newPinnedState, error: null) on success,
+    /// or (success: false, _, error) when the cap would be exceeded.
+    /// </summary>
+    public (bool Success, bool IsPinned, string? Error) TryPin(string id)
+    {
+        // Look in both collections.
+        var entry = _queue.FirstOrDefault(x => x.Id == id)
+                 ?? (_pinned.TryGetValue(id, out var p) ? p : null);
+
+        if (entry is null)
+        {
+            return (false, false, "Entry not found.");
+        }
+
+        if (entry.IsPinned)
+        {
+            // Unpin: remove from pinned dict, mark IsPinned=false,
+            // re-add to queue so it participates in normal FIFO eviction again.
+            if (_pinned.TryRemove(id, out _))
+            {
+                entry.IsPinned = false;
+
+                // Re-enqueue so the entry is visible in the normal stream.
+                // This may briefly exceed MaxEntries by one before the next Add() trims,
+                // which is acceptable — the entry was already stored.
+                _queue.Enqueue(entry);
+            }
+
+            return (true, false, null);
+        }
+        else
+        {
+            // Pin: enforce the cap first.
+            if (_pinned.Count >= MaxPinnedEntries)
+            {
+                return (false, false,
+                    $"Pin cap reached. At most {MaxPinnedEntries} entries may be pinned simultaneously.");
+            }
+
+            entry.IsPinned = true;
+            _pinned[id] = entry;
+
+            // The entry remains in _queue too until it would have been evicted naturally,
+            // but GetAll() deduplicates by ID, so it is only shown once on the dashboard.
+
+            return (true, true, null);
         }
     }
 
@@ -111,22 +197,48 @@ public class DebugEntryStore
         return Environment;
     }
 
+    /// <summary>
+    /// Returns all stored entries, with pinned entries first (deduplicated by ID).
+    /// </summary>
     public List<DebugEntry> GetAll()
     {
-        return _queue.ToList();
+        // Merge: pinned entries + unpinned entries (exclude IDs already in pinned).
+        var pinnedIds = new HashSet<string>(_pinned.Keys, StringComparer.Ordinal);
+        var unpinned = _queue.Where(e => e.Id == null || !pinnedIds.Contains(e.Id)).ToList();
+
+        var result = new List<DebugEntry>(_pinned.Values);
+        result.AddRange(unpinned);
+        return result;
     }
 
     public DebugEntry? Get(string id)
     {
+        // Check pinned first (O(1)), then queue.
+        if (_pinned.TryGetValue(id, out var pinned))
+        {
+            return pinned;
+        }
+
         return _queue.FirstOrDefault(x => x.Id == id);
     }
 
+    /// <summary>
+    /// Clears all entries, including pinned ones.
+    /// This is a full session reset; leaving pinned entries after a clear would
+    /// create a confusing split-brain state where the dashboard shows ghost entries.
+    /// </summary>
     public void Clear()
     {
         while (_queue.TryDequeue(out _)) { }
+        _pinned.Clear();
         _entryEnvironments.Clear();
         ExceptionGroups.Clear();
     }
+
+    /// <summary>
+    /// Returns the count of currently pinned entries.
+    /// </summary>
+    public int PinnedCount => _pinned.Count;
 
     private static bool TryParseException(string? body, out string type, out string message)
     {

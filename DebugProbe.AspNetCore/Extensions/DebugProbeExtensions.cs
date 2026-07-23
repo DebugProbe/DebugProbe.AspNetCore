@@ -160,6 +160,19 @@ public static class DebugProbeExtensions
 
                 }).ExcludeFromDescription(), options);
 
+                RequireDebugAuthorization(webApp.MapPost($"{prefix}/pin/{{id}}", (string id, DebugEntryStore store) =>
+                {
+                    var (success, isPinned, error) = store.TryPin(id);
+
+                    if (!success)
+                    {
+                        return Results.Conflict(new { error });
+                    }
+
+                    return Results.Ok(new { id, isPinned });
+
+                }).ExcludeFromDescription(), options);
+
                 RequireDebugAuthorization(webApp.Map($"{prefix}/logo.png", ctx =>
                     EmbeddedAssetWriter.WriteEmbeddedAsset(ctx, "DebugProbe.AspNetCore.Assets.images.debugprobe_logo_white_transparent.png", "image/png")
                 ).ExcludeFromDescription(), options);
