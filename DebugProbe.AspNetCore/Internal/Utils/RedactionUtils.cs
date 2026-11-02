@@ -7,9 +7,10 @@ namespace DebugProbe.AspNetCore.Internal.Utils;
 
 internal static class RedactionUtils
 {
+    private const string RedactionText = "[REDACTED]";
     public static string RedactHeader(string name, string value, DebugProbeOptions options)
     {
-        return IsMatch(name, options.RedactedHeaders) ? options.RedactionText : value;
+        return IsMatch(name, options.RedactedHeaders) ? RedactionText : value;
     }
 
     public static string RedactQueryString(string? queryString, DebugProbeOptions options)
@@ -98,7 +99,7 @@ internal static class RedactionUtils
                 continue;
             }
 
-            parts[i] = $"{name}={options.RedactionText}";
+            parts[i] = $"{name}={RedactionText}";
         }
 
         return string.Join("&", parts);
@@ -112,7 +113,7 @@ internal static class RedactionUtils
             {
                 if (IsMatch(property.Key, options.RedactedJsonFields))
                 {
-                    jsonObject[property.Key] = options.RedactionText;
+                    jsonObject[property.Key] = RedactionText;
                     continue;
                 }
 

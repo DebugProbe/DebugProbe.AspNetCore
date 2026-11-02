@@ -2,7 +2,6 @@ using System.Net;
 using DebugProbe.AspNetCore.Internal.Resources;
 using DebugProbe.AspNetCore.Internal.Utils;
 using DebugProbe.AspNetCore.Models;
-using DebugProbe.AspNetCore.Storage;
 using DebugProbe.AspNetCore.Options;
 
 namespace DebugProbe.AspNetCore.Internal.Rendering;
@@ -14,80 +13,23 @@ internal static class HtmlRenderer
 {
     public static string Env { get; } = EnvironmentUtils.TryGetEnvironment();
 
-    public static string BuildLayout(string content)
+    public static string BuildLayout(string content, DebugProbeOptions? options = null)
     {
+        options ??= new DebugProbeOptions();
         var envBlock = string.IsNullOrWhiteSpace(Env) ? "" : $"<span class=\"env\">{Encode(Env)}</span>";
 
         return EmbeddedResources.Layout
             .Replace("{{styles}}", $"<style>{EmbeddedResources.Css}</style>")
             .Replace("{{content}}", content)
-            .Replace("{{env_block}}", envBlock);
+            .Replace("{{env_block}}", envBlock)
+            .Replace("{{route_prefix}}", Encode(options.RoutePrefix));
     }
 
-    private static string NormalizePath(string? path)
-    {
-        if (string.IsNullOrEmpty(path))
-            return string.Empty;
-
-        var queryIndex = path.IndexOf('?');
-        var normalized = queryIndex >= 0 ? path[..queryIndex] : path;
-
-        if (normalized.Length > 1 && normalized.EndsWith('/'))
-        {
-            normalized = normalized.TrimEnd('/');
-        }
-
-        return normalized;
-    }
-
-    public static string RenderIndexPage(List<DebugEntry> items, DebugProbeOptions? options = null)
+    public static string RenderIndexPage(
+        List<DebugEntry> items, DebugProbeOptions? options = null,
+        IReadOnlyCollection<ExceptionGroup>? exceptionGroups = null)
     {
         options ??= new DebugProbeOptions();
-        var slowRequestThresholdMs = options.SlowRequestThresholdMs;
-        var store = DebugEntryStore.Instance;
-
-        var routesWithDiffs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var routeDiffTooltips = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        if (options.AutoEnvironmentDiff && items.Count > 0)
-        {
-            var groups = new Dictionary<string, Dictionary<string, DebugEntry>>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var entry in items)
-            {
-                var method = entry.Method ?? string.Empty;
-                var normalizedPath = NormalizePath(entry.Path);
-                var groupKey = $"{method}:{normalizedPath}";
-                var env = store?.GetEnvironment(entry)?.Environment ?? "Unknown";
-
-                if (!groups.TryGetValue(groupKey, out var envDict))
-                {
-                    envDict = new Dictionary<string, DebugEntry>(StringComparer.OrdinalIgnoreCase);
-                    groups[groupKey] = envDict;
-                }
-
-                if (!envDict.ContainsKey(env))
-                {
-                    envDict[env] = entry;
-                }
-            }
-
-            foreach (var kvp in groups)
-            {
-                var envDict = kvp.Value;
-                if (envDict.Count >= 2)
-                {
-                    var topTwo = envDict.Values.OrderByDescending(e => e.Timestamp).Take(2).ToList();
-                    var diffs = DebugProbe.AspNetCore.Internal.Compare.DebugEntryComparer.Compare(topTwo[0], topTwo[1]);
-                    if (diffs != null && diffs.Count > 0)
-                    {
-                        routesWithDiffs.Add(kvp.Key);
-                        var envNames = topTwo.Select(e => store?.GetEnvironment(e)?.Environment ?? "Unknown").Distinct();
-                        routeDiffTooltips[kvp.Key] = string.Join(", ", envNames);
-                    }
-                }
-            }
-        }
 
         var rows = string.Join("", items.Select(x =>
         {
@@ -95,28 +37,15 @@ internal static class HtmlRenderer
             var badge = RenderSlowBadge(TimeSpan.FromMilliseconds(x.DurationMs), options);
             var badgeHtml = string.IsNullOrEmpty(badge) ? "" : " " + badge;
 
-            var method = x.Method ?? string.Empty;
-            var normalizedPath = NormalizePath(x.Path);
-            var groupKey = $"{method}:{normalizedPath}";
-            var envDiffBadgeHtml = "";
-
-            if (options.AutoEnvironmentDiff && routesWithDiffs.Contains(groupKey))
-            {
-                if (routeDiffTooltips.TryGetValue(groupKey, out var envList))
-                {
-                    envDiffBadgeHtml = $@" <span class=""dbp-badge dbp-badge-envdiff"" title=""Payload differences detected between: {Encode(envList)}"">⚠ Env diff</span>";
-                }
-            }
-
             return $@"
-        <tr data-url=""/debug/{Encode(x.Id)}""
+        <tr data-url=""{Encode(options.RoutePrefix)}/{Encode(x.Id)}""
             data-method=""{Encode(x.Method)}""
             data-status-family=""{x.StatusCode / 100}""
             data-search=""{Encode($"{x.Id} {x.Method} {x.Path} {x.Query} {x.StatusCode}")}""
             class=""clickable-row"">
             <td>{x.Timestamp:HH:mm:ss}</td>
             <td><span class=""method-pill"">{Encode(x.Method)}</span></td>
-            <td class=""request-path""><span class=""request-path-value"" title=""{Encode(pathWithQuery)}"">{Encode(pathWithQuery)}</span>{envDiffBadgeHtml}</td>
+            <td class=""request-path""><span class=""request-path-value"" title=""{Encode(pathWithQuery)}"">{Encode(pathWithQuery)}</span></td>
             <td><span class=""status {GetStatusClass(x.StatusCode)}"">{x.StatusCode}</span></td>
             <td>{x.DurationMs} ms{badgeHtml}</td>
         </tr>";
@@ -132,99 +61,10 @@ internal static class HtmlRenderer
             .OrderBy(method => method, StringComparer.OrdinalIgnoreCase)
             .Select(method => $@"<option value=""{Encode(method)}"">{Encode(method)}</option>"));
 
-        var totalRequests = items.Count;
-        var averageResponseMs = totalRequests == 0 ? 0 : (int)Math.Round(items.Average(x => x.DurationMs));
-        var slowRequests = slowRequestThresholdMs > 0 ? items.Count(x => x.DurationMs >= slowRequestThresholdMs) : 0;
-        var errorRate = totalRequests == 0 ? 0 : items.Count(x => x.StatusCode >= 400) * 100d / totalRequests;
-
-        // Trend calculations
-        store ??= DebugEntryStore.Instance;
-        var now = DateTimeOffset.UtcNow;
-        var limitTime = now.AddMinutes(-options.TrendLookbackMinutes);
-        var midTime = now.AddMinutes(-options.TrendLookbackMinutes / 2.0);
-
-        int[] buckets = new int[options.TrendLookbackMinutes];
-        int totalA = 0;
-        int errorsA = 0;
-        int totalB = 0;
-        int errorsB = 0;
-
-        foreach (var entry in items)
-        {
-            var t = entry.Timestamp;
-            var elapsed = now - t;
-            if (elapsed.TotalMinutes < options.TrendLookbackMinutes)
-            {
-                double mins = Math.Max(0.0, elapsed.TotalMinutes);
-                int bucketIndex = options.TrendLookbackMinutes - 1 - (int)Math.Floor(mins);
-                if (bucketIndex >= 0 && bucketIndex < options.TrendLookbackMinutes)
-                {
-                    buckets[bucketIndex]++;
-                }
-            }
-
-            if (t >= midTime)
-            {
-                totalA++;
-                if (entry.StatusCode >= 400)
-                {
-                    errorsA++;
-                }
-            }
-            else if (t >= limitTime && t < midTime)
-            {
-                totalB++;
-                if (entry.StatusCode >= 400)
-                {
-                    errorsB++;
-                }
-            }
-        }
-
-        int maxVal = buckets.Max();
-        var pointsList = new List<string>();
-        for (int i = 0; i < options.TrendLookbackMinutes; i++)
-        {
-            double x = (double)i / (options.TrendLookbackMinutes - 1) * 120.0;
-            double y = maxVal == 0 ? 14.0 : 26.0 - ((double)buckets[i] / maxVal * 24.0);
-            pointsList.Add($"{x:0.##},{y:0.##}");
-        }
-        string pointsString = string.Join(" ", pointsList);
-
-        string sparklineSvg = $@"<svg width=""120"" height=""28"" viewBox=""0 0 120 28"" style=""overflow: visible;"" xmlns=""http://www.w3.org/2000/svg""><polyline fill=""none"" stroke=""#6c5ce7"" stroke-width=""2"" stroke-linecap=""round"" stroke-linejoin=""round"" points=""{pointsString}"" /></svg>";
-
-        double errorRateA = totalA == 0 ? 0.0 : (double)errorsA / totalA;
-        double errorRateB = totalB == 0 ? 0.0 : (double)errorsB / totalB;
-
-        string trendArrow;
-        string arrowClass;
-        if (totalA == 0 || totalB == 0)
-        {
-            trendArrow = "→";
-            arrowClass = "trend-neutral";
-        }
-        else if (errorRateA > errorRateB)
-        {
-            trendArrow = "↑";
-            arrowClass = "trend-up";
-        }
-        else if (errorRateA < errorRateB)
-        {
-            trendArrow = "↓";
-            arrowClass = "trend-down";
-        }
-        else
-        {
-            trendArrow = "→";
-            arrowClass = "trend-neutral";
-        }
-
-        string errorTrendHtml = $" <span class=\"trend-arrow {arrowClass}\" title=\"vs preceding period\">{trendArrow}</span>";
-
         var exceptionPanel = "";
-        if (store != null && !store.ExceptionGroups.IsEmpty)
+        if (exceptionGroups != null && exceptionGroups.Count > 0)
         {
-            var sortedGroups = store.ExceptionGroups.Values
+            var sortedGroups = exceptionGroups
                 .OrderByDescending(g => g.Count)
                 .ToList();
 
@@ -268,13 +108,7 @@ internal static class HtmlRenderer
         return BuildLayout(pageHtml
             .Replace("{{rows}}", rows)
             .Replace("{{total_count}}", items.Count.ToString())
-            .Replace("{{method_options}}", methodOptions)
-            .Replace("{{total_requests}}", FormatCompactNumber(totalRequests))
-            .Replace("{{avg_response_time}}", $"{averageResponseMs} ms")
-            .Replace("{{slow_requests}}", FormatCompactNumber(slowRequests))
-            .Replace("{{error_rate}}", $"{errorRate:0.#}%")
-            .Replace("{{error_trend}}", errorTrendHtml)
-            .Replace("{{sparkline}}", sparklineSvg));
+            .Replace("{{method_options}}", methodOptions), options);
     }
 
     public static string RenderDetailsPage(DebugEntry x, DebugEnvironment e, string req, string res, DebugProbeOptions? options = null)
@@ -315,9 +149,10 @@ internal static class HtmlRenderer
             ],
             options: options);
 
-        var waterfall = BuildWaterfallSection(x, options);
+        var outgoingSnapshot = x.OutgoingRequests.ToArray();
+        var waterfall = BuildWaterfallSection(x, outgoingSnapshot, options);
 
-        var outgoingRequests = string.Join("", x.OutgoingRequests.Select(r => BuildOutgoingRequestCard(r, options)));
+        var outgoingRequests = string.Join("", outgoingSnapshot.Select(r => BuildOutgoingRequestCard(r, options)));
 
         var combinedOutgoing = waterfall + outgoingRequests;
 
@@ -334,7 +169,7 @@ internal static class HtmlRenderer
             .Replace("{{durationMs}}", x.DurationMs.ToString())
             .Replace("{{durationBadge}}", RenderSlowBadge(TimeSpan.FromMilliseconds(x.DurationMs), options))
             .Replace("{{completed}}", x.Timestamp.AddMilliseconds(x.DurationMs).ToLocalTime().ToString("HH:mm:ss"))
-            .Replace("{{dependencyCount}}", x.OutgoingRequests.Count.ToString())
+            .Replace("{{dependencyCount}}", outgoingSnapshot.Length.ToString())
 
             .Replace("{{env}}", Encode(e.Environment))
             .Replace("{{culture}}", Encode(e.Culture))
@@ -351,10 +186,10 @@ internal static class HtmlRenderer
             .Replace("{{incomingRequest}}", incomingRequest)
             .Replace("{{incomingResponse}}", incomingResponse);
 
-        return BuildLayout(content);
+        return BuildLayout(content, options);
     }
 
-    public static string RenderComparePage(string localTraceId, string baseUrl, string traceId)
+    public static string RenderComparePage(string localTraceId, string baseUrl, string traceId, DebugProbeOptions? options = null)
     {
         var content = $@"
         <div class=""container compare-page"">
@@ -376,7 +211,7 @@ internal static class HtmlRenderer
             </section>
         </div>";
 
-        return BuildLayout(content);
+        return BuildLayout(content, options);
     }
 
     private static string BuildOutgoingRequestCard(DebugOutgoingRequest request, DebugProbeOptions options)
@@ -414,12 +249,12 @@ internal static class HtmlRenderer
             options: options);
     }
 
-    private static string BuildWaterfallSection(DebugEntry entry, DebugProbeOptions options)
+    private static string BuildWaterfallSection(DebugEntry entry, DebugOutgoingRequest[] outgoingRequests, DebugProbeOptions options)
     {
         const double MinPercent = 0.0;
         const double MaxPercent = 100.0;
 
-        if (entry.OutgoingRequests.Count == 0)
+        if (outgoingRequests.Length == 0)
         {
             return string.Empty;
         }
@@ -449,7 +284,7 @@ internal static class HtmlRenderer
 
         var rowsHtml = new List<string>();
 
-        foreach (var outgoing in entry.OutgoingRequests)
+        foreach (var outgoing in outgoingRequests)
         {
             var startOffsetMs = (outgoing.TimestampUtc - entry.Timestamp.UtcDateTime).TotalMilliseconds - outgoing.DurationMs;
 
@@ -689,16 +524,6 @@ internal static class HtmlRenderer
         };
     }
 
-    private static string FormatCompactNumber(int value)
-    {
-        return value switch
-        {
-            >= 1_000_000 => $"{value / 1_000_000d:0.#}M",
-            >= 1_000 => $"{value / 1_000d:0.#}K",
-            _ => value.ToString()
-        };
-    }
-
     private static string FormatBytes(int value)
     {
         return value switch
@@ -711,9 +536,9 @@ internal static class HtmlRenderer
 
     private static string RenderSlowBadge(TimeSpan duration, DebugProbeOptions options)
     {
-        if (options.SlowRequestThresholdMs > 0 && duration.TotalMilliseconds >= options.SlowRequestThresholdMs)
+        if (options.SlowRequestThreshold > TimeSpan.Zero && duration >= options.SlowRequestThreshold)
         {
-            return $@"<span class=""dbp-badge dbp-badge-slow"" title=""Exceeds {options.SlowRequestThresholdMs}ms threshold"">SLOW</span>";
+            return $@"<span class=""dbp-badge dbp-badge-slow"" title=""Exceeds {options.SlowRequestThreshold.TotalMilliseconds}ms threshold"">SLOW</span>";
         }
         return string.Empty;
     }

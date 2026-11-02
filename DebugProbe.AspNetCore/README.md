@@ -41,18 +41,19 @@ DebugProbe does not require authentication by default.
 ```csharp
 builder.Services.AddDebugProbe(options =>
 {
-    options.MaxEntries = 10;
+    options.MaxRequests = 10;
 
-    options.MaxBodyCaptureSizeKb = 256;
+    options.MaxBodySizeKb = 256;
 
     options.AllowLocalCompareTargets = true;
 
     options.AllowUiInProduction = false;
 
-    options.CaptureOutgoingHttpClientRequests = true;
+    options.CaptureOutgoingRequests = true;
 
-    options.IgnorePaths =
+    options.ExcludedPaths =
     [
+        ..options.ExcludedPaths,
         "/api/auth/login",
         "/api/auth/refresh"
     ];
@@ -80,6 +81,38 @@ builder.Services.AddDebugProbe(options =>
 app.UseDebugProbe();
 ```
 
+Configure options in `AddDebugProbe`; `UseDebugProbe()` only enables the middleware and endpoints.
+
+- `Enabled = false` disables capture and all DebugProbe endpoints.
+- `MaxBodySizeKb = 0` disables all body capture. Headers and request metadata are still captured.
+- `CaptureRequestBody` and `CaptureResponseBody` independently control incoming and outgoing bodies (both default to `true`).
+- `SlowRequestThreshold = TimeSpan.FromSeconds(1)` controls slow badges; `TimeSpan.Zero` disables them.
+- `ExcludedPaths` replaces the defaults. Use `[..options.ExcludedPaths, "/other"]` to extend them, or `[]` to capture all application paths.
+- `RoutePrefix` defaults to `"/debug"` and applies to the dashboard, assets, APIs, and compare page (`/debug/compare`).
+
+Standard .NET options configuration is also supported:
+
+```csharp
+builder.Services.AddDebugProbe();
+builder.Services.Configure<DebugProbeOptions>(builder.Configuration.GetSection("DebugProbe"));
+```
+
+Body capture uses the same rules for incoming and outgoing requests and responses:
+
+- The size limit applies to original body bytes; oversized text keeps a prefix followed by `[truncated]`.
+- Text uses the declared charset, with UTF-8 as the fallback; truncation does not leave a partial encoded character.
+- Binary content is represented by `[Body not captured: non-text content]`; empty or disabled bodies are empty strings.
+- If JSON field redaction is configured, truncated content is omitted because incomplete JSON cannot be reliably redacted.
+- Captured JSON is redacted before storage and formatted for display. Application payloads remain intact.
+
+Options are validated at startup. Configuration is fixed for the application's lifetime.
+
+This refactor renames `MaxEntries` to `MaxRequests`, `MaxBodyCaptureSizeKb` to `MaxBodySizeKb`,
+`IgnorePaths` to `ExcludedPaths`, and `CaptureOutgoingHttpClientRequests` to `CaptureOutgoingRequests`.
+`SlowRequestThresholdMs` is replaced by the `TimeSpan`-valued `SlowRequestThreshold`.
+`TrendLookbackMinutes`, `AutoEnvironmentDiff`, `RedactionText`, and the configuration overload of `UseDebugProbe` have been removed.
+Sensitive values use the fixed `[REDACTED]` marker. Trace comparison remains available manually.
+
 To protect DebugProbe endpoints, configure an ASP.NET Core authorization policy and require it when DebugProbe is registered:
 
 ```csharp
@@ -92,14 +125,18 @@ builder.Services.AddAuthorization(options =>
     });
 });
 
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.UseDebugProbe(options =>
+builder.Services.AddDebugProbe(options =>
 {
     options.AuthorizationPolicy = "DebugProbePolicy";
 });
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseDebugProbe();
 ```
+
+Captured outgoing calls use a concurrent queue (`OutgoingRequests.Enqueue(...)` replaces `Add(...)`).
+Storage operations are synchronized; `ExceptionGroups` returns a read-only dictionary snapshot.
 
 ## Features
 
@@ -154,13 +191,14 @@ builder.Services.AddAuthorization(options =>
     });
 });
 
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.UseDebugProbe(options =>
+builder.Services.AddDebugProbe(options =>
 {
     options.AuthorizationPolicy = "DebugProbePolicy";
 });
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseDebugProbe();
 ```
 
 DebugProbe masks common sensitive headers automatically:

@@ -283,7 +283,7 @@ if (clearBtn) {
     clearBtn.addEventListener("click", async () => {
         if (!confirm("Clear all requests?")) return;
 
-        await fetch("/debug/clear", { method: "POST" });
+        await fetch(`${document.body.dataset.debugprobePrefix}/clear`, { method: "POST" });
         location.reload();
     });
 }
@@ -488,7 +488,7 @@ document.addEventListener("keydown", (e) => {
 
     // "Escape" must always work, even inside input/textarea/contenteditable elements
     if (key === "Escape" || key === "Esc") {
-        const backLink = document.querySelector('a[href="/debug"]') || 
+        const backLink = document.querySelector(`a[href="${document.body.dataset.debugprobePrefix}"]`) ||
                          Array.from(document.querySelectorAll("a")).find(a => a.textContent.includes("Back"));
         if (backLink) {
             backLink.click();

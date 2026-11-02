@@ -9,6 +9,28 @@ namespace DebugProbe.AspNetCore.Tests.Handlers;
 
 public class DebugProbeHttpClientHandlerBodyTests
 {
+    [Theory]
+    [InlineData(false, true, 32)]
+    [InlineData(true, false, 32)]
+    [InlineData(true, true, 0)]
+    public async Task Body_capture_controls_preserve_outgoing_response(bool request, bool response, int limit)
+    {
+        var (client, entry) = BuildClient(new DebugProbeOptions
+        {
+            CaptureRequestBody = request,
+            CaptureResponseBody = response,
+            MaxBodySizeKb = limit
+        }, new StringContent("pong"));
+        using (client)
+        using (var result = await client.PostAsync("https://example.test/", new StringContent("ping")))
+        {
+            Assert.Equal("pong", await result.Content.ReadAsStringAsync());
+            var outgoing = Assert.Single(entry.OutgoingRequests);
+            Assert.Equal(request && limit > 0 ? "ping" : "", outgoing.RequestBody);
+            Assert.Equal(response && limit > 0 ? "pong" : "", outgoing.ResponseBody);
+        }
+    }
+
     // ---------------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------------
@@ -49,7 +71,7 @@ public class DebugProbeHttpClientHandlerBodyTests
         const int limitKb = 1;                    // 1 KB limit
         var bodyText = new string('A', 100);      // 100 bytes — well under 1 KB
 
-        var options = new DebugProbeOptions { MaxBodyCaptureSizeKb = limitKb };
+        var options = new DebugProbeOptions { MaxBodySizeKb = limitKb };
         var (client, entry) = BuildClient(options,
             responseContent: new StringContent(bodyText, Encoding.UTF8, "text/plain"));
 
@@ -66,7 +88,7 @@ public class DebugProbeHttpClientHandlerBodyTests
         const int limitKb = 1;
         var bodyText = new string('B', 1024);     // exactly 1 KB
 
-        var options = new DebugProbeOptions { MaxBodyCaptureSizeKb = limitKb };
+        var options = new DebugProbeOptions { MaxBodySizeKb = limitKb };
         var (client, entry) = BuildClient(options,
             responseContent: new StringContent(bodyText, Encoding.UTF8, "text/plain"));
 
@@ -83,7 +105,7 @@ public class DebugProbeHttpClientHandlerBodyTests
         const int limitKb = 1;
         var bodyText = new string('C', 2048);     // 2 KB — double the limit
 
-        var options = new DebugProbeOptions { MaxBodyCaptureSizeKb = limitKb };
+        var options = new DebugProbeOptions { MaxBodySizeKb = limitKb };
         var (client, entry) = BuildClient(options,
             responseContent: new StringContent(bodyText, Encoding.UTF8, "text/plain"));
 
@@ -106,7 +128,7 @@ public class DebugProbeHttpClientHandlerBodyTests
             CharSet = Encoding.UTF8.WebName
         };
 
-        var options = new DebugProbeOptions { MaxBodyCaptureSizeKb = limitKb };
+        var options = new DebugProbeOptions { MaxBodySizeKb = limitKb };
         var (client, entry) = BuildClient(options, responseContent);
 
         using var response = await client.GetAsync("https://example.test/");
@@ -123,7 +145,7 @@ public class DebugProbeHttpClientHandlerBodyTests
         const string bodyText = "Hello \u0100";
         var responseContent = new StringContent(bodyText, Encoding.Unicode, "text/plain");
 
-        var options = new DebugProbeOptions { MaxBodyCaptureSizeKb = 1 };
+        var options = new DebugProbeOptions { MaxBodySizeKb = 1 };
         var (client, entry) = BuildClient(options, responseContent);
 
         using var response = await client.GetAsync("https://example.test/");
@@ -159,7 +181,7 @@ public class DebugProbeHttpClientHandlerBodyTests
         await client.GetAsync("https://example.test/");
 
         var outgoing = Assert.Single(entry.OutgoingRequests);
-        Assert.Equal(string.Empty, outgoing.ResponseBody);
+        Assert.Equal("[Body not captured: non-text content]", outgoing.ResponseBody);
     }
 
     // ---------------------------------------------------------------------------

@@ -9,6 +9,20 @@ namespace DebugProbe.AspNetCore.Tests.Storage;
 public class DebugEntryStoreTests
 {
     [Fact]
+    public void Exception_groups_are_bounded_without_resetting_existing_counts()
+    {
+        var store = new DebugEntryStore(new DebugProbeOptions { MaxRequests = 2 });
+        foreach (var message in new[] { "first", "first", "second", "third" })
+            store.Add(new DebugEntry { Id = Guid.NewGuid().ToString(), ResponseBody = $"System.Exception: {message}" });
+
+        Assert.Equal(2, store.GetAll().Count);
+        Assert.Equal(2, store.ExceptionGroups.Count);
+        Assert.DoesNotContain(store.ExceptionGroups.Values, group => group.SampleMessage == "first");
+        store.Add(new DebugEntry { Id = "next", ResponseBody = "System.Exception: third" });
+        Assert.Equal(2, store.ExceptionGroups.Values.Single(group => group.SampleMessage == "third").Count);
+    }
+
+    [Fact]
     public void Add_identical_type_and_message_increments_count()
     {
         var store = new DebugEntryStore(new DebugProbeOptions());

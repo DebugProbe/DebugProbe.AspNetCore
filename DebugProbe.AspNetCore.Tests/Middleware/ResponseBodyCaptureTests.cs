@@ -36,7 +36,7 @@ public class ResponseBodyCaptureTests
         var body = new string('x', 1500);
         await using var app = await DebugProbeTestApp.CreateAsync(
             endpoints => endpoints.MapGet("/large", () => Results.Text(body, "text/plain")),
-            options => options.MaxBodyCaptureSizeKb = 2);
+            options => options.MaxBodySizeKb = 2);
 
         await app.Client.GetAsync("/large");
 
@@ -64,13 +64,13 @@ public class ResponseBodyCaptureTests
         var body = new string('x', 1200);
         await using var app = await DebugProbeTestApp.CreateAsync(
             endpoints => endpoints.MapGet("/too-large", () => Results.Text(body, "text/plain")),
-            options => options.MaxBodyCaptureSizeKb = 1);
+            options => options.MaxBodySizeKb = 1);
 
         var response = await app.Client.GetAsync("/too-large");
 
         var entry = app.SingleEntry;
         Assert.Equal(body, await response.Content.ReadAsStringAsync());
-        Assert.Equal("[Body too large]", entry.ResponseBody);
+        Assert.Equal(body[..1024] + "[truncated]", entry.ResponseBody);
         Assert.Equal(body.Length, entry.ResponseSize);
     }
 }

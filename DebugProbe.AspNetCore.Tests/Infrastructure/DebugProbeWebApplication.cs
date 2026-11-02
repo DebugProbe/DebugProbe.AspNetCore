@@ -30,8 +30,7 @@ internal sealed class DebugProbeWebApplication : IAsyncDisposable
         Action<IEndpointRouteBuilder>? mapEndpoints = null,
         Action<DebugProbeOptions>? configureOptions = null,
         Action<IServiceCollection>? configureServices = null,
-        Action<WebApplication>? configureBeforeDebugProbe = null,
-        Action<DebugProbeOptions>? configureUseDebugProbe = null)
+        Action<WebApplication>? configureBeforeDebugProbe = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -48,7 +47,7 @@ internal sealed class DebugProbeWebApplication : IAsyncDisposable
 
         app.UseRouting();
         configureBeforeDebugProbe?.Invoke(app);
-        app.UseDebugProbe(configureUseDebugProbe);
+        app.UseDebugProbe();
 
         mapEndpoints?.Invoke(app);
 
