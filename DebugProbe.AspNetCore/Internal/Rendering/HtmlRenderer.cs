@@ -14,30 +14,16 @@ internal static class HtmlRenderer
 {
     public static string Env { get; } = EnvironmentUtils.TryGetEnvironment();
 
-    public static string BuildLayout(string content)
+    public static string BuildLayout(string content, DebugProbeOptions? options = null)
     {
+        options ??= new DebugProbeOptions();
         var envBlock = string.IsNullOrWhiteSpace(Env) ? "" : $"<span class=\"env\">{Encode(Env)}</span>";
 
         return EmbeddedResources.Layout
             .Replace("{{styles}}", $"<style>{EmbeddedResources.Css}</style>")
             .Replace("{{content}}", content)
-            .Replace("{{env_block}}", envBlock);
-    }
-
-    private static string NormalizePath(string? path)
-    {
-        if (string.IsNullOrEmpty(path))
-            return string.Empty;
-
-        var queryIndex = path.IndexOf('?');
-        var normalized = queryIndex >= 0 ? path[..queryIndex] : path;
-
-        if (normalized.Length > 1 && normalized.EndsWith('/'))
-        {
-            normalized = normalized.TrimEnd('/');
-        }
-
-        return normalized;
+            .Replace("{{env_block}}", envBlock)
+            .Replace("{{route_prefix}}", Encode(options.RoutePrefix));
     }
 
     public static string RenderIndexPage(List<DebugEntry> items, DebugProbeOptions? options = null)
@@ -45,77 +31,21 @@ internal static class HtmlRenderer
         options ??= new DebugProbeOptions();
         var store = DebugEntryStore.Instance;
 
-        var routesWithDiffs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var routeDiffTooltips = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        if (options.AutoEnvironmentDiff && items.Count > 0)
-        {
-            var groups = new Dictionary<string, Dictionary<string, DebugEntry>>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var entry in items)
-            {
-                var method = entry.Method ?? string.Empty;
-                var normalizedPath = NormalizePath(entry.Path);
-                var groupKey = $"{method}:{normalizedPath}";
-                var env = store?.GetEnvironment(entry)?.Environment ?? "Unknown";
-
-                if (!groups.TryGetValue(groupKey, out var envDict))
-                {
-                    envDict = new Dictionary<string, DebugEntry>(StringComparer.OrdinalIgnoreCase);
-                    groups[groupKey] = envDict;
-                }
-
-                if (!envDict.ContainsKey(env))
-                {
-                    envDict[env] = entry;
-                }
-            }
-
-            foreach (var kvp in groups)
-            {
-                var envDict = kvp.Value;
-                if (envDict.Count >= 2)
-                {
-                    var topTwo = envDict.Values.OrderByDescending(e => e.Timestamp).Take(2).ToList();
-                    var diffs = DebugProbe.AspNetCore.Internal.Compare.DebugEntryComparer.Compare(topTwo[0], topTwo[1]);
-                    if (diffs != null && diffs.Count > 0)
-                    {
-                        routesWithDiffs.Add(kvp.Key);
-                        var envNames = topTwo.Select(e => store?.GetEnvironment(e)?.Environment ?? "Unknown").Distinct();
-                        routeDiffTooltips[kvp.Key] = string.Join(", ", envNames);
-                    }
-                }
-            }
-        }
-
         var rows = string.Join("", items.Select(x =>
         {
             var pathWithQuery = string.IsNullOrEmpty(x.Query) ? x.Path : $"{x.Path}{x.Query}";
             var badge = RenderSlowBadge(TimeSpan.FromMilliseconds(x.DurationMs), options);
             var badgeHtml = string.IsNullOrEmpty(badge) ? "" : " " + badge;
 
-            var method = x.Method ?? string.Empty;
-            var normalizedPath = NormalizePath(x.Path);
-            var groupKey = $"{method}:{normalizedPath}";
-            var envDiffBadgeHtml = "";
-
-            if (options.AutoEnvironmentDiff && routesWithDiffs.Contains(groupKey))
-            {
-                if (routeDiffTooltips.TryGetValue(groupKey, out var envList))
-                {
-                    envDiffBadgeHtml = $@" <span class=""dbp-badge dbp-badge-envdiff"" title=""Payload differences detected between: {Encode(envList)}"">⚠ Env diff</span>";
-                }
-            }
-
             return $@"
-        <tr data-url=""/debug/{Encode(x.Id)}""
+        <tr data-url=""{Encode(options.RoutePrefix)}/{Encode(x.Id)}""
             data-method=""{Encode(x.Method)}""
             data-status-family=""{x.StatusCode / 100}""
             data-search=""{Encode($"{x.Id} {x.Method} {x.Path} {x.Query} {x.StatusCode}")}""
             class=""clickable-row"">
             <td>{x.Timestamp:HH:mm:ss}</td>
             <td><span class=""method-pill"">{Encode(x.Method)}</span></td>
-            <td class=""request-path""><span class=""request-path-value"" title=""{Encode(pathWithQuery)}"">{Encode(pathWithQuery)}</span>{envDiffBadgeHtml}</td>
+            <td class=""request-path""><span class=""request-path-value"" title=""{Encode(pathWithQuery)}"">{Encode(pathWithQuery)}</span></td>
             <td><span class=""status {GetStatusClass(x.StatusCode)}"">{x.StatusCode}</span></td>
             <td>{x.DurationMs} ms{badgeHtml}</td>
         </tr>";
@@ -178,7 +108,7 @@ internal static class HtmlRenderer
         return BuildLayout(pageHtml
             .Replace("{{rows}}", rows)
             .Replace("{{total_count}}", items.Count.ToString())
-            .Replace("{{method_options}}", methodOptions));
+            .Replace("{{method_options}}", methodOptions), options);
     }
 
     public static string RenderDetailsPage(DebugEntry x, DebugEnvironment e, string req, string res, DebugProbeOptions? options = null)
@@ -255,10 +185,10 @@ internal static class HtmlRenderer
             .Replace("{{incomingRequest}}", incomingRequest)
             .Replace("{{incomingResponse}}", incomingResponse);
 
-        return BuildLayout(content);
+        return BuildLayout(content, options);
     }
 
-    public static string RenderComparePage(string localTraceId, string baseUrl, string traceId)
+    public static string RenderComparePage(string localTraceId, string baseUrl, string traceId, DebugProbeOptions? options = null)
     {
         var content = $@"
         <div class=""container compare-page"">
@@ -280,7 +210,7 @@ internal static class HtmlRenderer
             </section>
         </div>";
 
-        return BuildLayout(content);
+        return BuildLayout(content, options);
     }
 
     private static string BuildOutgoingRequestCard(DebugOutgoingRequest request, DebugProbeOptions options)
@@ -593,16 +523,6 @@ internal static class HtmlRenderer
         };
     }
 
-    private static string FormatCompactNumber(int value)
-    {
-        return value switch
-        {
-            >= 1_000_000 => $"{value / 1_000_000d:0.#}M",
-            >= 1_000 => $"{value / 1_000d:0.#}K",
-            _ => value.ToString()
-        };
-    }
-
     private static string FormatBytes(int value)
     {
         return value switch
@@ -615,9 +535,9 @@ internal static class HtmlRenderer
 
     private static string RenderSlowBadge(TimeSpan duration, DebugProbeOptions options)
     {
-        if (options.SlowRequestThresholdMs > 0 && duration.TotalMilliseconds >= options.SlowRequestThresholdMs)
+        if (options.SlowRequestThreshold > TimeSpan.Zero && duration >= options.SlowRequestThreshold)
         {
-            return $@"<span class=""dbp-badge dbp-badge-slow"" title=""Exceeds {options.SlowRequestThresholdMs}ms threshold"">SLOW</span>";
+            return $@"<span class=""dbp-badge dbp-badge-slow"" title=""Exceeds {options.SlowRequestThreshold.TotalMilliseconds}ms threshold"">SLOW</span>";
         }
         return string.Empty;
     }

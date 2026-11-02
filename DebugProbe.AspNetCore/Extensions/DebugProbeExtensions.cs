@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http;
+using Microsoft.Extensions.Options;
 
 namespace DebugProbe.AspNetCore.Extensions;
 
@@ -32,56 +33,41 @@ public static class DebugProbeExtensions
     /// </summary>
     public static IServiceCollection AddDebugProbe(this IServiceCollection services, Action<DebugProbeOptions>? configure = null)
     {
-        var options = new DebugProbeOptions();
-
-        configure?.Invoke(options);
-
-        var validator = new DebugProbeOptionsValidator();
-        var result = validator.Validate(null, options);
-        if (result.Failed)
-            throw new InvalidOperationException(result.FailureMessage);
-
-        services.AddSingleton(options);
-
-        services.AddSingleton<DebugEntryStore>();
-
-        services.AddHttpContextAccessor();
-
-        services.AddHttpClient();
-
-        if (options.CaptureOutgoingHttpClientRequests)
+        services.AddOptions<DebugProbeOptions>()
+            .Configure(options => configure?.Invoke(options))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<DebugProbeOptions>, DebugProbeOptionsValidator>();
+        services.PostConfigure<DebugProbeOptions>(options =>
         {
-            services.AddTransient<DebugProbeHttpClientHandler>();
-
-            services.ConfigureAll<HttpClientFactoryOptions>(httpClientOptions =>
+            if (!string.IsNullOrWhiteSpace(options.RoutePrefix))
+                options.RoutePrefix = "/" + options.RoutePrefix.Trim('/');
+        });
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<DebugProbeOptions>>().Value);
+        services.AddSingleton<DebugEntryStore>();
+        services.AddHttpContextAccessor();
+        services.AddHttpClient();
+        services.AddTransient<DebugProbeHttpClientHandler>();
+        services.ConfigureAll<HttpClientFactoryOptions>(httpClientOptions =>
+        {
+            httpClientOptions.HttpMessageHandlerBuilderActions.Add(builder =>
             {
-                httpClientOptions.HttpMessageHandlerBuilderActions.Add(builder =>
-                {
+                var options = builder.Services.GetRequiredService<DebugProbeOptions>();
+                if (options.Enabled && options.CaptureOutgoingRequests)
                     builder.AdditionalHandlers.Add(builder.Services.GetRequiredService<DebugProbeHttpClientHandler>());
-                });
             });
-        }
+        });
 
         return services;
     }
 
-    /// <summary>
-    /// Registers DebugProbe services.
-    /// </summary>
+    /// <summary>Enables the middleware and maps the DebugProbe endpoints.</summary>
     public static IApplicationBuilder UseDebugProbe(this IApplicationBuilder app)
     {
-        return app.UseDebugProbe(configure: null);
-    }
-
-    /// <summary>
-    /// Registers DebugProbe services and configures runtime endpoint options.
-    /// </summary>
-    public static IApplicationBuilder UseDebugProbe(this IApplicationBuilder app, Action<DebugProbeOptions>? configure)
-    {
         var options = app.ApplicationServices.GetRequiredService<DebugProbeOptions>();
-        var environment = app.ApplicationServices.GetRequiredService<IHostEnvironment>();
+        if (!options.Enabled)
+            return app;
 
-        configure?.Invoke(options);
+        var environment = app.ApplicationServices.GetRequiredService<IHostEnvironment>();
 
         options.AllowLocalCompareTargets ??= environment.IsDevelopment();
 
@@ -128,14 +114,14 @@ public static class DebugProbeExtensions
 
                 }).ExcludeFromDescription(), options);
 
-                RequireDebugAuthorization(webApp.MapGet("/compare", (string? baseUrl, string? traceId, string? localTraceId) =>
+                RequireDebugAuthorization(webApp.MapGet($"{prefix}/compare", (string? baseUrl, string? traceId, string? localTraceId) =>
                 {
                     if (string.IsNullOrWhiteSpace(localTraceId))
                     {
                         return Results.BadRequest("Missing local trace id");
                     }
 
-                    var html = HtmlRenderer.RenderComparePage(localTraceId, baseUrl ?? "", traceId ?? "");
+                    var html = HtmlRenderer.RenderComparePage(localTraceId, baseUrl ?? "", traceId ?? "", options);
 
                     return Results.Content(html, "text/html; charset=utf-8", System.Text.Encoding.UTF8);
 

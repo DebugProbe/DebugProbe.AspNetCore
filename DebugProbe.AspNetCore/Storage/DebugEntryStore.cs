@@ -40,7 +40,7 @@ public class DebugEntryStore
     public DebugEntryStore(DebugProbeOptions options)
     {
         Instance = this;
-        _limit = options.MaxEntries;
+        _limit = options.MaxRequests;
 
         Environment = new DebugEnvironment
         {
@@ -92,9 +92,17 @@ public class DebugEntryStore
                 });
         }
 
+        // Keep aggregate groups bounded independently of request eviction.
+        while (ExceptionGroups.Count > _limit)
+        {
+            var oldest = ExceptionGroups.Values.MinBy(group => group.LastSeen);
+            if (oldest == null || !ExceptionGroups.TryRemove(oldest.Fingerprint, out _))
+                break;
+        }
+
         while (_queue.Count > _limit)
         {
-            // ExceptionGroups counts are a running tally and must NOT be decremented on MaxEntries eviction.
+            // ExceptionGroups counts are a running tally and must NOT be decremented on MaxRequests eviction.
             if (_queue.TryDequeue(out var evicted) && evicted.Id != null)
             {
                 _entryEnvironments.TryRemove(evicted.Id, out _);

@@ -57,7 +57,7 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
         long durationMs,
         CancellationToken cancellationToken)
     {
-        if (!TryGetActiveEntry(out var entry))
+        if (!_options.Enabled || !_options.CaptureOutgoingRequests || !TryGetActiveEntry(out var entry))
         {
             return;
         }
@@ -83,9 +83,13 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
             ResponseHeaders = response != null ? response.Headers.ToDictionary(x => x.Key, x => RedactionUtils.RedactHeader(x.Key, string.Join(", ", x.Value), _options)) : []
         };
 
-        outgoing.RequestBody = (await CaptureBodyAsync(request.Content, cancellationToken)).Body;
+        outgoing.RequestBody = _options.CaptureRequestBody
+            ? (await CaptureBodyAsync(request.Content, cancellationToken)).Body
+            : string.Empty;
 
-        outgoing.ResponseBody = await CaptureResponseBodyAsync(response, cancellationToken);
+        outgoing.ResponseBody = _options.CaptureResponseBody
+            ? await CaptureResponseBodyAsync(response, cancellationToken)
+            : string.Empty;
 
         entry.OutgoingRequests.Add(outgoing);
     }
@@ -133,10 +137,10 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
             return string.Empty;
         }
 
-        if (_options.MaxBodyCaptureSizeBytes <= 0)
+        if (_options.MaxBodySizeBytes <= 0)
             return string.Empty;
 
-        var limit = _options.MaxBodyCaptureSizeBytes;
+        var limit = _options.MaxBodySizeBytes;
         var buffer = new byte[limit + 1];
         var totalRead = 0;
 

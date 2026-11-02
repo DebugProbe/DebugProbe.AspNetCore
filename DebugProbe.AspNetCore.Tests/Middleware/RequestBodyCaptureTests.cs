@@ -31,7 +31,7 @@ public class RequestBodyCaptureTests
     [Fact]
     public async Task Handles_large_request_body_within_limit()
     {
-        await using var app = await CreateEchoAppAsync(options => options.MaxBodyCaptureSizeKb = 2);
+        await using var app = await CreateEchoAppAsync(options => options.MaxBodySizeKb = 2);
         var body = new string('a', 1500);
 
         await app.Client.PostAsync("/echo", JsonContent(body));
@@ -42,7 +42,7 @@ public class RequestBodyCaptureTests
     [Fact]
     public async Task Respects_max_body_capture_size_for_request()
     {
-        await using var app = await CreateEchoAppAsync(options => options.MaxBodyCaptureSizeKb = 1);
+        await using var app = await CreateEchoAppAsync(options => options.MaxBodySizeKb = 1);
         var body = new string('a', 1200);
 
         await app.Client.PostAsync("/echo", JsonContent(body));

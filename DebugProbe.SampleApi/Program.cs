@@ -10,7 +10,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDebugProbe(options =>
 {
-    options.MaxEntries = 10;
+    options.MaxRequests = 10;
     options.AllowUiInProduction = true;
 });
 

@@ -15,7 +15,7 @@ public class DebugProbeProductionEndpointTests
 
         var capturedResponse = await app.Client.GetAsync("/hello");
         var debugResponse = await app.Client.GetAsync("/debug");
-        var comparePageResponse = await app.Client.GetAsync($"/compare?localTraceId={app.SingleEntry.Id}");
+        var comparePageResponse = await app.Client.GetAsync($"/debug/compare?localTraceId={app.SingleEntry.Id}");
         var scriptResponse = await app.Client.GetAsync("/debug/js/debugprobe-ui.js");
         var logoResponse = await app.Client.GetAsync("/debug/logo.png");
         var environmentResponse = await app.Client.GetAsync("/debug/environment");
@@ -44,7 +44,7 @@ public class DebugProbeProductionEndpointTests
 
         var debugResponse = await app.Client.GetAsync("/debug");
         var detailsResponse = await app.Client.GetAsync($"/debug/{app.SingleEntry.Id}");
-        var comparePageResponse = await app.Client.GetAsync($"/compare?localTraceId={app.SingleEntry.Id}");
+        var comparePageResponse = await app.Client.GetAsync($"/debug/compare?localTraceId={app.SingleEntry.Id}");
         var scriptResponse = await app.Client.GetAsync("/debug/js/debugprobe-ui.js");
         var logoResponse = await app.Client.GetAsync("/debug/logo.png");
         var environmentResponse = await app.Client.GetAsync("/debug/environment");

@@ -55,7 +55,7 @@ public class DebugProbeAuthorizationEndpointTests
                 app.UseAuthentication();
                 app.UseAuthorization();
             },
-            configureUseDebugProbe: options => options.AuthorizationPolicy = "DebugProbePolicy");
+            configureOptions: options => options.AuthorizationPolicy = "DebugProbePolicy");
 
         await app.Client.GetAsync("/hello");
         var traceId = app.SingleEntry.Id;

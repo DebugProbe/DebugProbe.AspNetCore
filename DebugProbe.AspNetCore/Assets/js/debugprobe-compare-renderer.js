@@ -13,7 +13,7 @@ window.runCompare = async function () {
     setCompareActionsVisible(false);
 
     try {
-        const res = await fetch(`/debug/compare/${id}?baseUrl=${encodeURIComponent(base)}&remoteTraceId=${encodeURIComponent(remoteId)}`);
+        const res = await fetch(`${document.body.dataset.debugprobePrefix}/compare/${id}?baseUrl=${encodeURIComponent(base)}&remoteTraceId=${encodeURIComponent(remoteId)}`);
 
         if (!res.ok) {
             const text = await res.text();
@@ -64,7 +64,7 @@ function getCompareShareUrl() {
         return '';
     }
 
-    return `${window.location.origin}/compare?baseUrl=${encodeURIComponent(base)}&traceId=${encodeURIComponent(traceId)}&localTraceId=${encodeURIComponent(localTraceId)}`;
+    return `${window.location.origin}${document.body.dataset.debugprobePrefix}/compare?baseUrl=${encodeURIComponent(base)}&traceId=${encodeURIComponent(traceId)}&localTraceId=${encodeURIComponent(localTraceId)}`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -18,27 +18,6 @@ public class DebugProbeMiddleware
     private const string BodyTooLargeMessage = "[Body too large]";
     private const string BinaryBodyMessage = "[Body not captured: non-text content]";
 
-    private static readonly string[] DefaultIgnorePaths =
-    [
-        "/compare",
-        "/swagger",
-        "/health",
-        "/healthz",
-        "/ready",
-        "/live",
-        "/.well-known",
-
-        // browser noise
-        "/favicon.ico",
-
-        // scanners
-        "/.git",
-        "/wp-admin",
-        "/phpmyadmin",
-        "/cgi-bin",
-        "/server-status"
-    ];
-
     private readonly RequestDelegate _next;
     private readonly DebugProbeOptions _options;
 
@@ -56,20 +35,23 @@ public class DebugProbeMiddleware
     /// </summary>
     public async Task Invoke(HttpContext context, DebugEntryStore store)
     {
-        if (IsIgnoredPath(context.Request.Path))
+        if (!_options.Enabled || IsIgnoredPath(context.Request.Path))
         {
             await _next(context);
             return;
         }
 
-        var maxBodySize = _options.MaxBodyCaptureSizeBytes;
+        var maxBodySize = _options.MaxBodySizeBytes;
 
-        var requestBody = await CaptureRequestBodyAsync(context, maxBodySize);
+        var requestBody = _options.CaptureRequestBody && maxBodySize > 0
+            ? await CaptureRequestBodyAsync(context, maxBodySize)
+            : string.Empty;
 
         var originalBody = context.Response.Body;
 
         await using var responseCapture =
-            new BoundedResponseCaptureStream(originalBody, maxBodySize + 1);
+            new BoundedResponseCaptureStream(originalBody,
+                _options.CaptureResponseBody && maxBodySize > 0 ? maxBodySize + 1 : 0);
 
         context.Response.Body = responseCapture;
 
@@ -106,7 +88,9 @@ public class DebugProbeMiddleware
 
             var statusCode = exception && context.Response.StatusCode == 200 ? 500 : context.Response.StatusCode;
 
-            var responseBody = exception
+            var responseBody = !_options.CaptureResponseBody || maxBodySize == 0
+                ? string.Empty
+                : exception
                 ? HttpContentUtils.Trim(exceptionResponseBody, maxBodySize)
                 : CaptureResponseBody(context, responseCapture, maxBodySize);
 
@@ -158,8 +142,7 @@ public class DebugProbeMiddleware
     {
         var path = requestPath.Value ?? string.Empty;
 
-        return DefaultIgnorePaths
-            .Concat(_options.IgnorePaths)
+        return _options.ExcludedPaths
             .Append(_options.RoutePrefix)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Any(ignorePath => 
