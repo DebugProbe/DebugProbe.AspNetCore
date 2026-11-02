@@ -1,14 +1,14 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
+		<TargetFramework>net10.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<NoWarn>1591</NoWarn>
 
 		<PackageId>DebugProbe.AspNetCore</PackageId>
-		<Version>1.6.10</Version>
+		<Version>2.0.0</Version>
 
 		<Authors>Georgi Hristov</Authors>
 
@@ -17,13 +17,11 @@
 		<PackageTags>aspnetcore;debugging;http;middleware;diagnostics;tracing;observability;api-debugging;developer-tools;trace-comparison;environment-comparison</PackageTags>
 
 		<PackageReleaseNotes>
-			## What's New
-
-			- Added URL-persistent dashboard filters that survive page refreshes and direct links.
-			- Added request rate sparkline, error trend indicators, and keyboard shortcuts to the dashboard.
-			- Fixed dashboard error trend calculations and added regression tests.
-			- Fixed endpoint routing validation by detecting missing controller mapping.
-		</PackageReleaseNotes>
+            - Targets .NET 10; applications on .NET 8 or 9 should stay on compatible 1.x releases.
+            - Breaking API changes: simplified options, configuration only in AddDebugProbe, and concurrent outgoing request storage.
+            - Fixed custom route prefixes, capture failure isolation, and concurrent storage operations.
+            - Removed the global storage instance and unified body capture limits, encoding, truncation, and redaction.
+        </PackageReleaseNotes>
 		
 		<PackageIcon>icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
@@ -63,7 +61,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.300">
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.403">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
