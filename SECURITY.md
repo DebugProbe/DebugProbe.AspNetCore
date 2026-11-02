@@ -6,11 +6,12 @@ If you discover a security vulnerability in DebugProbe.AspNetCore, please report
 
 Please do not open public GitHub issues for security-related reports.
 
-Contact via [Email](georgi.dimitrov.hristov@gmail.com)
+Contact via [Email](mailto:georgi.dimitrov.hristov@gmail.com)
 
-You can also use [GitHub Private Vulnerability Reporting](https://github.com/georgidhristov/DebugProbe.AspNetCore/settings/security_analysis).
+You can also use [GitHub Private Vulnerability Reporting](https://github.com/DebugProbe/DebugProbe.AspNetCore/security/advisories/new).
 
 Include:
+
 - Description of the issue
 - Steps to reproduce
 - Potential impact
@@ -23,13 +24,14 @@ You will receive a response as soon as possible.
 | Version | Supported |
 |---------|-----------|
 | Latest  |    YES    |
-| Older   |    NO     |   
+| Older   |    NO     |
 
 ## Security Notes
 
 DebugProbe.AspNetCore is a development and debugging tool intended primarily for local and non-production environments.
 
 By default:
+
 - Data is stored in-memory only
 - Data is not persisted externally
 - Stored entries are cleared when the application stops
@@ -39,10 +41,16 @@ By default:
 When exposing DebugProbe outside local development, prefer protecting the endpoints with an ASP.NET Core authorization policy:
 
 ```csharp
-app.UseDebugProbe(options =>
+// Register the policy with AddAuthorization before building the application.
+builder.Services.AddDebugProbe(options =>
 {
     options.AuthorizationPolicy = "DebugProbePolicy";
 });
+
+// After builder.Build(), enable the configured authentication/authorization middleware.
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseDebugProbe();
 ```
 
 Avoid exposing DebugProbe endpoints publicly or using the package in production environments without proper security review and access restrictions.

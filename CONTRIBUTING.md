@@ -4,8 +4,8 @@ Thank you for your interest in contributing to DebugProbe.AspNetCore.
 
 ## Getting Started
 
-Clone the repository and open the solution:
-co
+Install the .NET 10 SDK, then clone the repository and open the solution:
+
 ```bash
 git clone https://github.com/DebugProbe/DebugProbe.AspNetCore.git
 ```
@@ -26,7 +26,16 @@ Use the sample application for local development and testing:
 DebugProbe.SampleApi/
 ```
 
-Run the sample API project to test DebugProbe functionality and UI behavior during development.
+Run the sample API project to test DebugProbe functionality and UI behavior during development:
+
+```bash
+dotnet restore DebugProbe.AspNetCore.sln
+dotnet build DebugProbe.AspNetCore.sln --no-restore --configuration Release
+dotnet test DebugProbe.AspNetCore.sln --no-build --configuration Release
+dotnet run --project DebugProbe.SampleApi
+```
+
+Tests use xUnit v3 with VSTest; the existing `dotnet test` workflow remains supported.
 
 ## Branch Naming
 

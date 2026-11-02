@@ -39,9 +39,15 @@ dotnet add package DebugProbe.AspNetCore
 ## Quick Start
 
 ```csharp
+using DebugProbe.AspNetCore.Extensions;
+
+var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDebugProbe();
 
+var app = builder.Build();
 app.UseDebugProbe();
+app.MapGet("/hello", () => "Hello!");
+app.Run();
 ```
 
 Start your application and open:
@@ -110,6 +116,8 @@ Configure options in `AddDebugProbe`; `UseDebugProbe()` only enables the middlew
 Standard .NET options configuration is also supported:
 
 ```csharp
+using DebugProbe.AspNetCore.Options;
+
 builder.Services.AddDebugProbe();
 builder.Services.Configure<DebugProbeOptions>(builder.Configuration.GetSection("DebugProbe"));
 ```
@@ -124,36 +132,33 @@ Body capture uses the same rules for incoming and outgoing requests and response
 
 Options are validated at startup. Configuration is fixed for the application's lifetime.
 
-This refactor renames `MaxEntries` to `MaxRequests`, `MaxBodyCaptureSizeKb` to `MaxBodySizeKb`,
-`IgnorePaths` to `ExcludedPaths`, and `CaptureOutgoingHttpClientRequests` to `CaptureOutgoingRequests`.
-`SlowRequestThresholdMs` is replaced by the `TimeSpan`-valued `SlowRequestThreshold`.
-`TrendLookbackMinutes`, `AutoEnvironmentDiff`, `RedactionText`, and the configuration overload of `UseDebugProbe` have been removed.
-Sensitive values use the fixed `[REDACTED]` marker. Trace comparison remains available manually.
+## Migrating from 1.x to 2.0
 
-To protect DebugProbe endpoints, configure an ASP.NET Core authorization policy and require it when DebugProbe is registered:
+- Upgrade the application to .NET 10 before installing version 2.0.0.
+- Configure DebugProbe in `builder.Services.AddDebugProbe(...)`, before `builder.Build()`; replace `app.UseDebugProbe(options => ...)` with `app.UseDebugProbe()`.
 
-```csharp
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("DebugProbePolicy", policy =>
-    {
-        policy.RequireAuthenticatedUser();
-        policy.RequireRole("Admin");
-    });
-});
+| Previous option | Replacement |
+| --- | --- |
+| `MaxEntries` | `MaxRequests` |
+| `MaxBodyCaptureSizeKb` | `MaxBodySizeKb` |
+| `IgnorePaths` | `ExcludedPaths` |
+| `CaptureOutgoingHttpClientRequests` | `CaptureOutgoingRequests` |
+| `SlowRequestThresholdMs = 1000` | `SlowRequestThreshold = TimeSpan.FromSeconds(1)` |
 
-builder.Services.AddDebugProbe(options =>
-{
-    options.AuthorizationPolicy = "DebugProbePolicy";
-});
+`TrendLookbackMinutes`, `AutoEnvironmentDiff`, and `RedactionText` have been removed. Sensitive values use the fixed `[REDACTED]` marker; trace comparison remains available manually.
 
-app.UseAuthentication();
-app.UseAuthorization();
-app.UseDebugProbe();
-```
+`ExcludedPaths` now contains editable defaults. Assigning an array replaces them; use `[..options.ExcludedPaths, "/other"]` to extend them. DebugProbe endpoints remain excluded automatically.
 
-Captured outgoing calls use a concurrent queue (`OutgoingRequests.Enqueue(...)` replaces `Add(...)`).
-Storage operations are synchronized; `ExceptionGroups` returns a read-only dictionary snapshot.
+Additional API and behavior changes:
+
+- `DebugEntryStore.Instance` has been removed; resolve the store through dependency injection when needed.
+- `OutgoingRequests` is a concurrent queue: use `Enqueue(...)` instead of `Add(...)`.
+- `ExceptionGroups` returns an `IReadOnlyDictionary` snapshot instead of a mutable concurrent dictionary.
+- The compare page moved from `/compare` to `/debug/compare` (or `{RoutePrefix}/compare`); update bookmarks and links. Remote trace comparison currently uses the same route prefix on both applications.
+- Oversized text now keeps a prefix with `[truncated]` instead of `[Body too large]`. When JSON field redaction is configured, truncated content is omitted.
+- Captured outgoing JSON is stored without pretty-printing and formatted for display, matching incoming capture.
+
+For endpoint authorization, see **Security Defaults** below.
 
 ## Features
 
