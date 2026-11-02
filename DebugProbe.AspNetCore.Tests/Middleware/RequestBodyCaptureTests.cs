@@ -47,7 +47,7 @@ public class RequestBodyCaptureTests
 
         await app.Client.PostAsync("/echo", JsonContent(body));
 
-        Assert.Equal("[Body too large]", app.SingleEntry.RequestBody);
+        Assert.Equal(body[..1024] + "[truncated]", app.SingleEntry.RequestBody);
     }
 
     [Fact]

@@ -181,7 +181,7 @@ public class DebugProbeHttpClientHandlerBodyTests
         await client.GetAsync("https://example.test/");
 
         var outgoing = Assert.Single(entry.OutgoingRequests);
-        Assert.Equal(string.Empty, outgoing.ResponseBody);
+        Assert.Equal("[Body not captured: non-text content]", outgoing.ResponseBody);
     }
 
     // ---------------------------------------------------------------------------

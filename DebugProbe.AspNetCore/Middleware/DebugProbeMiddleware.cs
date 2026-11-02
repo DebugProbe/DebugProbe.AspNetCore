@@ -6,6 +6,7 @@ using DebugProbe.AspNetCore.Models;
 using DebugProbe.AspNetCore.Options;
 using DebugProbe.AspNetCore.Storage;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace DebugProbe.AspNetCore.Middleware;
 
@@ -15,9 +16,6 @@ namespace DebugProbe.AspNetCore.Middleware;
 /// </summary>
 public class DebugProbeMiddleware
 {
-    private const string BodyTooLargeMessage = "[Body too large]";
-    private const string BinaryBodyMessage = "[Body not captured: non-text content]";
-
     private readonly RequestDelegate _next;
     private readonly DebugProbeOptions _options;
 
@@ -99,8 +97,8 @@ public class DebugProbeMiddleware
                 var responseBody = !_options.CaptureResponseBody || maxBodySize == 0
                     ? string.Empty
                     : applicationException != null
-                    ? HttpContentUtils.Trim(applicationException.ToString(), maxBodySize)
-                    : CaptureResponseBody(context, responseCapture, maxBodySize);
+                    ? CaptureExceptionBody(applicationException)
+                    : CaptureResponseBody(context, responseCapture);
 
                 entry.Method = context.Request.Method;
 
@@ -129,13 +127,9 @@ public class DebugProbeMiddleware
                         $"{context.Request.Path}{context.Request.QueryString}",
                         _options);
 
-                entry.RequestBody = RedactionUtils.RedactJsonFields(
-                    HttpContentUtils.Trim(requestBody, maxBodySize),
-                    _options);
+                entry.RequestBody = requestBody;
 
-                entry.ResponseBody = RedactionUtils.RedactJsonFields(
-                    HttpContentUtils.Trim(responseBody, maxBodySize),
-                    _options);
+                entry.ResponseBody = responseBody;
 
                 entry.ResponseHeaders =
                     context.Response.Headers.ToDictionary(
@@ -167,7 +161,7 @@ public class DebugProbeMiddleware
                 path.StartsWith(ignorePath.TrimEnd('/') + "/", StringComparison.OrdinalIgnoreCase));
     }
 
-    private static async Task<string> CaptureRequestBodyAsync(HttpContext context, int maxBodySize)
+    private async Task<string> CaptureRequestBodyAsync(HttpContext context, int maxBodySize)
     {
         if (!HasBody(context.Request))
         {
@@ -176,12 +170,7 @@ public class DebugProbeMiddleware
 
         if (!HttpContentUtils.IsTextContent(context.Request.ContentType))
         {
-            return BinaryBodyMessage;
-        }
-
-        if (context.Request.ContentLength > maxBodySize)
-        {
-            return BodyTooLargeMessage;
+            return context.Request.ContentLength == 0 ? string.Empty : BodyCaptureUtils.BinaryBodyMessage;
         }
 
         context.Request.EnableBuffering();
@@ -195,7 +184,8 @@ public class DebugProbeMiddleware
         try
         {
             var bytes = await ReadAtMostAsync(context.Request.Body, maxBodySize + 1);
-            return bytes.Length > maxBodySize ? BodyTooLargeMessage : Encoding.UTF8.GetString(bytes);
+            
+            return BodyCaptureUtils.Format(bytes, bytes.Length, context.Request.ContentType, _options);
         }
         finally
         {
@@ -203,25 +193,25 @@ public class DebugProbeMiddleware
         }
     }
 
-    private static string CaptureResponseBody(HttpContext context, BoundedResponseCaptureStream responseCapture, int maxBodySize)
+    private string CaptureResponseBody(HttpContext context, BoundedResponseCaptureStream responseCapture)
     {
-        if (!HttpContentUtils.IsTextContent(context.Response.ContentType))
-        {
-            return responseCapture.TotalBytesWritten == 0
-                ? string.Empty
-                : BinaryBodyMessage;
-        }
+        return BodyCaptureUtils.Format(responseCapture.CapturedBytes, responseCapture.TotalBytesWritten,
+            context.Response.ContentType, _options);
+    }
 
-        if (responseCapture.TotalBytesWritten > maxBodySize)
-        {
-            return BodyTooLargeMessage;
-        }
-
-        return Encoding.UTF8.GetString(responseCapture.CapturedBytes);
+    private string CaptureExceptionBody(Exception exception)
+    {
+        var bytes = Encoding.UTF8.GetBytes(exception.ToString());
+       
+        return BodyCaptureUtils.Format(bytes, bytes.Length, "text/plain; charset=utf-8", _options);
     }
 
     private static bool HasBody(HttpRequest request)
     {
+        var detection = request.HttpContext.Features.Get<IHttpRequestBodyDetectionFeature>();
+        if (detection != null)
+            return detection.CanHaveBody;
+
         if (request.ContentLength == 0)
         {
             return false;

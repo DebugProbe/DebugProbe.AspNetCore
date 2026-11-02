@@ -70,7 +70,7 @@ public class ResponseBodyCaptureTests
 
         var entry = app.SingleEntry;
         Assert.Equal(body, await response.Content.ReadAsStringAsync());
-        Assert.Equal("[Body too large]", entry.ResponseBody);
+        Assert.Equal(body[..1024] + "[truncated]", entry.ResponseBody);
         Assert.Equal(body.Length, entry.ResponseSize);
     }
 }

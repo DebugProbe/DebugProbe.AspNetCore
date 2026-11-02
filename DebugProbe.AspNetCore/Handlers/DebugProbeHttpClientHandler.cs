@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Net;
-using System.Text;
 using DebugProbe.AspNetCore.Internal.Utils;
 using DebugProbe.AspNetCore.Models;
 using DebugProbe.AspNetCore.Options;
@@ -138,9 +137,11 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
     private async Task<string> CaptureBodyAsync(
         HttpContent? content, Action<HttpContent> replaceContent, CancellationToken cancellationToken)
     {
-        if (content == null || !HttpContentUtils.IsTextContent(content.Headers.ContentType?.MediaType) ||
-            _options.MaxBodySizeBytes <= 0)
+        if (content == null || content.Headers.ContentLength == 0 || _options.MaxBodySizeBytes <= 0)
             return string.Empty;
+
+        if (!HttpContentUtils.IsTextContent(content.Headers.ContentType?.MediaType))
+            return BodyCaptureUtils.BinaryBodyMessage;
 
         var limit = _options.MaxBodySizeBytes;
         var buffer = new byte[limit + 1];
@@ -163,29 +164,7 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
                 replaceContent(new PrefixReplayHttpContent(content, stream, buffer[..totalRead]));
         }
 
-        var body = GetEncoding(content).GetString(buffer, 0, Math.Min(totalRead, limit));
-        if (totalRead > limit)
-            body += "[truncated]";
-
-        return JsonUtils.Format(RedactionUtils.RedactJsonFields(body, _options));
-    }
-
-    private static Encoding GetEncoding(HttpContent content)
-    {
-        var charset = content.Headers.ContentType?.CharSet;
-        if (string.IsNullOrWhiteSpace(charset))
-        {
-            return Encoding.UTF8;
-        }
-
-        try
-        {
-            return Encoding.GetEncoding(charset.Trim('"'));
-        }
-        catch
-        {
-            return Encoding.UTF8;
-        }
+        return BodyCaptureUtils.Format(buffer.AsSpan(0, totalRead), totalRead, content.Headers.ContentType?.ToString(), _options);
     }
 
     private sealed class PrefixReplayHttpContent : HttpContent

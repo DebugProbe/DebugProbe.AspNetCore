@@ -97,6 +97,14 @@ builder.Services.AddDebugProbe();
 builder.Services.Configure<DebugProbeOptions>(builder.Configuration.GetSection("DebugProbe"));
 ```
 
+Body capture uses the same rules for incoming and outgoing requests and responses:
+
+- The size limit applies to original body bytes; oversized text keeps a prefix followed by `[truncated]`.
+- Text uses the declared charset, with UTF-8 as the fallback; truncation does not leave a partial encoded character.
+- Binary content is represented by `[Body not captured: non-text content]`; empty or disabled bodies are empty strings.
+- If JSON field redaction is configured, truncated content is omitted because incomplete JSON cannot be reliably redacted.
+- Captured JSON is redacted before storage and formatted for display. Application payloads remain intact.
+
 Options are validated at startup. Configuration is fixed for the application's lifetime.
 
 This refactor renames `MaxEntries` to `MaxRequests`, `MaxBodyCaptureSizeKb` to `MaxBodySizeKb`,
