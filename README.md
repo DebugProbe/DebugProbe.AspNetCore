@@ -13,6 +13,23 @@ It captures request and response data, exposes a local dashboard, and helps comp
 - Demo API: [demo.debugprobe.dev/swagger](https://demo.debugprobe.dev/swagger)
 - NuGet: [DebugProbe.AspNetCore](https://www.nuget.org/packages/DebugProbe.AspNetCore)
 
+## Version Compatibility
+
+| DebugProbe.AspNetCore | Target framework | Compatible application versions |
+| --- | --- | --- |
+| 2.x (starting with 2.0.0) | `net10.0` | .NET 10 and later compatible .NET versions |
+| 1.x targeting net8.0 (for example, 1.6.10) | `net8.0` | .NET 8, .NET 9, and later compatible .NET versions |
+
+Version 2.0.0 requires .NET 10 and ASP.NET Core 10. Building this repository requires the .NET 10 SDK.
+Applications staying on .NET 8 or .NET 9 should use a compatible 1.x release, such as 1.6.10:
+
+```bash
+dotnet add package DebugProbe.AspNetCore --version 1.6.10
+```
+
+Compatibility does not extend Microsoft's support lifecycle for the application's .NET runtime.
+Version 2.0.0 also contains breaking configuration and API changes described below.
+
 ## Install
 
 ```bash
