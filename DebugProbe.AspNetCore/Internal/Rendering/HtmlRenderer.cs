@@ -62,9 +62,10 @@ internal static class HtmlRenderer
             .Select(method => $@"<option value=""{Encode(method)}"">{Encode(method)}</option>"));
 
         var exceptionPanel = "";
-        if (store != null && !store.ExceptionGroups.IsEmpty)
+        var exceptionGroups = store?.ExceptionGroups;
+        if (exceptionGroups != null && exceptionGroups.Count > 0)
         {
-            var sortedGroups = store.ExceptionGroups.Values
+            var sortedGroups = exceptionGroups.Values
                 .OrderByDescending(g => g.Count)
                 .ToList();
 
@@ -149,9 +150,10 @@ internal static class HtmlRenderer
             ],
             options: options);
 
-        var waterfall = BuildWaterfallSection(x, options);
+        var outgoingSnapshot = x.OutgoingRequests.ToArray();
+        var waterfall = BuildWaterfallSection(x, outgoingSnapshot, options);
 
-        var outgoingRequests = string.Join("", x.OutgoingRequests.Select(r => BuildOutgoingRequestCard(r, options)));
+        var outgoingRequests = string.Join("", outgoingSnapshot.Select(r => BuildOutgoingRequestCard(r, options)));
 
         var combinedOutgoing = waterfall + outgoingRequests;
 
@@ -168,7 +170,7 @@ internal static class HtmlRenderer
             .Replace("{{durationMs}}", x.DurationMs.ToString())
             .Replace("{{durationBadge}}", RenderSlowBadge(TimeSpan.FromMilliseconds(x.DurationMs), options))
             .Replace("{{completed}}", x.Timestamp.AddMilliseconds(x.DurationMs).ToLocalTime().ToString("HH:mm:ss"))
-            .Replace("{{dependencyCount}}", x.OutgoingRequests.Count.ToString())
+            .Replace("{{dependencyCount}}", outgoingSnapshot.Length.ToString())
 
             .Replace("{{env}}", Encode(e.Environment))
             .Replace("{{culture}}", Encode(e.Culture))
@@ -248,12 +250,12 @@ internal static class HtmlRenderer
             options: options);
     }
 
-    private static string BuildWaterfallSection(DebugEntry entry, DebugProbeOptions options)
+    private static string BuildWaterfallSection(DebugEntry entry, DebugOutgoingRequest[] outgoingRequests, DebugProbeOptions options)
     {
         const double MinPercent = 0.0;
         const double MaxPercent = 100.0;
 
-        if (entry.OutgoingRequests.Count == 0)
+        if (outgoingRequests.Length == 0)
         {
             return string.Empty;
         }
@@ -283,7 +285,7 @@ internal static class HtmlRenderer
 
         var rowsHtml = new List<string>();
 
-        foreach (var outgoing in entry.OutgoingRequests)
+        foreach (var outgoing in outgoingRequests)
         {
             var startOffsetMs = (outgoing.TimestampUtc - entry.Timestamp.UtcDateTime).TotalMilliseconds - outgoing.DurationMs;
 

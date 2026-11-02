@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -24,17 +23,27 @@ public class DebugEntryStore
     public static DebugEntryStore? Instance { get; private set; }
 
     /// <summary>
-    /// Gets the exception groups.
+    /// Gets a snapshot of the exception groups. Later updates and clears do not change this snapshot.
     /// </summary>
-    public ConcurrentDictionary<string, ExceptionGroup> ExceptionGroups { get; } = new();
+    public IReadOnlyDictionary<string, ExceptionGroup> ExceptionGroups
+    {
+        get
+        {
+            lock (_sync)
+                return new Dictionary<string, ExceptionGroup>(_exceptionGroups);
+        }
+    }
 
     /// <summary>
     /// Gets environment information for the current application.
     /// </summary>
     public DebugEnvironment Environment { get; }
 
-    private readonly ConcurrentQueue<DebugEntry> _queue = new();
-    private readonly ConcurrentDictionary<string, DebugEnvironment> _entryEnvironments = new();
+    // A single lock keeps requests, environment mappings, and group counts consistent during Add and Clear.
+    private readonly object _sync = new();
+    private readonly Queue<DebugEntry> _queue = new();
+    private readonly Dictionary<string, ExceptionGroup> _exceptionGroups = new();
+    private readonly Dictionary<string, DebugEnvironment> _entryEnvironments = new();
     private readonly int _limit;
 
     public DebugEntryStore(DebugProbeOptions options)
@@ -62,78 +71,85 @@ public class DebugEntryStore
 
     public void Add(DebugEntry entry, DebugEnvironment environment)
     {
-        _queue.Enqueue(entry);
-        if (environment != null && entry.Id != null)
+        lock (_sync)
         {
-            _entryEnvironments[entry.Id] = environment;
-        }
+            _queue.Enqueue(entry);
+            if (environment != null && entry.Id != null)
+            {
+                _entryEnvironments[entry.Id] = environment;
+            }
 
-        if (TryParseException(entry.ResponseBody, out var type, out var message))
-        {
-            var normalizedMessage = NormalizeMessage(message);
-            var fingerprint = ComputeHash(type + normalizedMessage);
+            if (TryParseException(entry.ResponseBody, out var type, out var message))
+            {
+                var normalizedMessage = NormalizeMessage(message);
+                var fingerprint = ComputeHash(type + normalizedMessage);
 
-            ExceptionGroups.AddOrUpdate(fingerprint,
-                key => new ExceptionGroup
+                _exceptionGroups.TryGetValue(fingerprint, out var existing);
+                _exceptionGroups[fingerprint] = new ExceptionGroup
                 {
                     Fingerprint = fingerprint,
                     Type = type,
-                    SampleMessage = message,
-                    Count = 1,
+                    SampleMessage = existing?.SampleMessage ?? message,
+                    Count = (existing?.Count ?? 0) + 1,
                     LastSeen = DateTimeOffset.UtcNow
-                },
-                (key, existing) => new ExceptionGroup
-                {
-                    Fingerprint = existing.Fingerprint,
-                    Type = existing.Type,
-                    SampleMessage = existing.SampleMessage,
-                    Count = existing.Count + 1,
-                    LastSeen = DateTimeOffset.UtcNow
-                });
-        }
+                };
+            }
 
-        // Keep aggregate groups bounded independently of request eviction.
-        while (ExceptionGroups.Count > _limit)
-        {
-            var oldest = ExceptionGroups.Values.MinBy(group => group.LastSeen);
-            if (oldest == null || !ExceptionGroups.TryRemove(oldest.Fingerprint, out _))
-                break;
-        }
-
-        while (_queue.Count > _limit)
-        {
-            // ExceptionGroups counts are a running tally and must NOT be decremented on MaxRequests eviction.
-            if (_queue.TryDequeue(out var evicted) && evicted.Id != null)
+            // Keep aggregate groups bounded independently of request eviction.
+            while (_exceptionGroups.Count > _limit)
             {
-                _entryEnvironments.TryRemove(evicted.Id, out _);
+                var oldest = _exceptionGroups.Values.MinBy(group => group.LastSeen)!;
+                _exceptionGroups.Remove(oldest.Fingerprint);
+            }
+
+            while (_queue.Count > _limit)
+            {
+                // ExceptionGroups counts are a running tally and must NOT be decremented on MaxRequests eviction.
+                var evicted = _queue.Dequeue();
+                if (evicted.Id != null)
+                {
+                    _entryEnvironments.Remove(evicted.Id);
+                }
             }
         }
     }
 
     public DebugEnvironment GetEnvironment(DebugEntry entry)
     {
-        if (entry.Id != null && _entryEnvironments.TryGetValue(entry.Id, out var env))
+        lock (_sync)
         {
-            return env;
+            if (entry.Id != null && _entryEnvironments.TryGetValue(entry.Id, out var env))
+            {
+                return env;
+            }
+            return Environment;
         }
-        return Environment;
     }
 
     public List<DebugEntry> GetAll()
     {
-        return _queue.ToList();
+        lock (_sync)
+        {
+            return _queue.ToList();
+        }
     }
 
     public DebugEntry? Get(string id)
     {
-        return _queue.FirstOrDefault(x => x.Id == id);
+        lock (_sync)
+        {
+            return _queue.FirstOrDefault(x => x.Id == id);
+        }
     }
 
     public void Clear()
     {
-        while (_queue.TryDequeue(out _)) { }
-        _entryEnvironments.Clear();
-        ExceptionGroups.Clear();
+        lock (_sync)
+        {
+            _queue.Clear();
+            _entryEnvironments.Clear();
+            _exceptionGroups.Clear();
+        }
     }
 
     private static bool TryParseException(string? body, out string type, out string message)

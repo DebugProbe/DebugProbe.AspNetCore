@@ -118,7 +118,7 @@ public class HtmlRendererTests
         var entry = CreateEntry();
         entry.DurationMs = 500;
         
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "GET",
             Url = "https://external-api.test/v1/users?id=123",
@@ -128,7 +128,7 @@ public class HtmlRendererTests
             IsSuccessStatusCode = true
         });
 
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "POST",
             Url = "https://untrusted-api.test/v1/search?query=a&b=%3Cscript%3E",
@@ -171,7 +171,7 @@ public class HtmlRendererTests
     public void Details_page_renders_curl_copy_attributes_and_buttons()
     {
         var entry = CreateEntry();
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "PUT",
             Url = "https://external-api.test/v1/update",
@@ -209,7 +209,7 @@ public class HtmlRendererTests
     public void Details_page_renders_csharp_copy_attributes_and_buttons()
     {
         var entry = CreateEntry();
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "PUT",
             Url = "https://external-api.test/v1/update",
@@ -247,7 +247,7 @@ public class HtmlRendererTests
     public void Details_page_renders_markdown_copy_attributes_and_buttons()
     {
         var entry = CreateEntry();
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "PUT",
             Url = "https://external-api.test/v1/update",
@@ -312,7 +312,7 @@ public class HtmlRendererTests
     {
         var entry = CreateEntry();
         entry.DurationMs = 1200; // > 1000
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "GET",
             Url = "https://external-api.test",
@@ -321,7 +321,7 @@ public class HtmlRendererTests
             TimestampUtc = entry.Timestamp.UtcDateTime.AddMilliseconds(200),
             IsSuccessStatusCode = true
         });
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "GET",
             Url = "https://external-api2.test",
@@ -453,7 +453,7 @@ public class HtmlRendererTests
     {
         var entry = CreateEntry();
         entry.DurationMs = 500; // < 1000 (not slow)
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "GET",
             Url = "https://external-api.test",
@@ -478,7 +478,7 @@ public class HtmlRendererTests
     {
         var entry = CreateEntry();
         entry.DurationMs = 200;
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "GET",
             Url = "https://external-api.test",
@@ -497,7 +497,7 @@ public class HtmlRendererTests
     {
         var entry = CreateEntry();
         entry.DurationMs = 200;
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "GET",
             Url = "https://external-api.test",

@@ -127,6 +127,9 @@ app.UseAuthorization();
 app.UseDebugProbe();
 ```
 
+Captured outgoing calls use a concurrent queue (`OutgoingRequests.Enqueue(...)` replaces `Add(...)`).
+Storage operations are synchronized; `ExceptionGroups` returns a read-only dictionary snapshot.
+
 ## Features
 
 - Request inspection

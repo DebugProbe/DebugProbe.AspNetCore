@@ -104,7 +104,7 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
             ? await CaptureResponseBodyAsync(response, cancellationToken)
             : string.Empty;
 
-        entry.OutgoingRequests.Add(outgoing);
+        entry.OutgoingRequests.Enqueue(outgoing);
     }
 
     private bool TryGetActiveEntry(out DebugEntry entry)
