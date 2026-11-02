@@ -2,7 +2,6 @@ using System.Net;
 using DebugProbe.AspNetCore.Internal.Resources;
 using DebugProbe.AspNetCore.Internal.Utils;
 using DebugProbe.AspNetCore.Models;
-using DebugProbe.AspNetCore.Storage;
 using DebugProbe.AspNetCore.Options;
 
 namespace DebugProbe.AspNetCore.Internal.Rendering;
@@ -26,10 +25,11 @@ internal static class HtmlRenderer
             .Replace("{{route_prefix}}", Encode(options.RoutePrefix));
     }
 
-    public static string RenderIndexPage(List<DebugEntry> items, DebugProbeOptions? options = null)
+    public static string RenderIndexPage(
+        List<DebugEntry> items, DebugProbeOptions? options = null,
+        IReadOnlyCollection<ExceptionGroup>? exceptionGroups = null)
     {
         options ??= new DebugProbeOptions();
-        var store = DebugEntryStore.Instance;
 
         var rows = string.Join("", items.Select(x =>
         {
@@ -62,10 +62,9 @@ internal static class HtmlRenderer
             .Select(method => $@"<option value=""{Encode(method)}"">{Encode(method)}</option>"));
 
         var exceptionPanel = "";
-        var exceptionGroups = store?.ExceptionGroups;
         if (exceptionGroups != null && exceptionGroups.Count > 0)
         {
-            var sortedGroups = exceptionGroups.Values
+            var sortedGroups = exceptionGroups
                 .OrderByDescending(g => g.Count)
                 .ToList();
 

@@ -86,7 +86,7 @@ public static class DebugProbeExtensions
                         .OrderByDescending(x => x.Timestamp)
                         .ToList();
 
-                    var html = HtmlRenderer.RenderIndexPage(items, options);
+                    var html = HtmlRenderer.RenderIndexPage(items, options, store.ExceptionGroups.Values.ToArray());
                     ctx.Response.ContentType = "text/html; charset=utf-8";
 
                     await ctx.Response.WriteAsync(html);

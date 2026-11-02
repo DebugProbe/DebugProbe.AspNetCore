@@ -18,11 +18,6 @@ public class DebugEntryStore
     private static readonly Regex NumberRegex = new(@"\b\d+(\.\d+)?\b", RegexOptions.Compiled);
 
     /// <summary>
-    /// Gets the static instance of DebugEntryStore.
-    /// </summary>
-    public static DebugEntryStore? Instance { get; private set; }
-
-    /// <summary>
     /// Gets a snapshot of the exception groups. Later updates and clears do not change this snapshot.
     /// </summary>
     public IReadOnlyDictionary<string, ExceptionGroup> ExceptionGroups
@@ -48,7 +43,6 @@ public class DebugEntryStore
 
     public DebugEntryStore(DebugProbeOptions options)
     {
-        Instance = this;
         _limit = options.MaxRequests;
 
         Environment = new DebugEnvironment
