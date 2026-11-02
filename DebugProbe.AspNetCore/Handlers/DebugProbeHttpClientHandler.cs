@@ -31,25 +31,38 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
     {
         var started = Stopwatch.StartNew();
 
+        HttpResponseMessage response;
         try
         {
-            var response = await base.SendAsync(request, cancellationToken);
-
-            await CaptureRequest(request, response, null, started.ElapsedMilliseconds, cancellationToken);
-
-            return response;
+            response = await base.SendAsync(request, cancellationToken);
         }
         catch (Exception ex)
         {
-            await CaptureRequest(request, null, ex, started.ElapsedMilliseconds, cancellationToken);
-
+            await TryCaptureRequest(request, null, ex, started.ElapsedMilliseconds, cancellationToken);
             throw;
         }
+
+        await TryCaptureRequest(request, response, null, started.ElapsedMilliseconds, cancellationToken);
+        return response;
     }
 
     /// <summary>
     /// Captures outgoing request details and stores them in the active DebugProbe entry.
     /// </summary>
+    private async Task TryCaptureRequest(
+        HttpRequestMessage request, HttpResponseMessage? response, Exception? exception,
+        long durationMs, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await CaptureRequest(request, response, exception, durationMs, cancellationToken);
+        }
+        catch (Exception)
+        {
+            // Diagnostics must not replace a successful response or the original transport exception.
+        }
+    }
+
     private async Task CaptureRequest(
         HttpRequestMessage request,
         HttpResponseMessage? response,
@@ -84,7 +97,7 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
         };
 
         outgoing.RequestBody = _options.CaptureRequestBody
-            ? (await CaptureBodyAsync(request.Content, cancellationToken)).Body
+            ? await CaptureBodyAsync(request.Content, content => request.Content = content, cancellationToken)
             : string.Empty;
 
         outgoing.ResponseBody = _options.CaptureResponseBody
@@ -119,53 +132,42 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
             return string.Empty;
         }
 
-        var result = await CaptureBodyAsync(content, cancellationToken);
-
-        if (result.BytesRead.Length > 0)
-        {
-            response!.Content = new PrefixReplayHttpContent(content, result.Stream, result.BytesRead);
-        }
-
-        return result.Body;
+        return await CaptureBodyAsync(content, replacement => response!.Content = replacement, cancellationToken);
     }
 
-    private async Task<BodyCaptureResult> CaptureBodyAsync(HttpContent? content, CancellationToken cancellationToken)
+    private async Task<string> CaptureBodyAsync(
+        HttpContent? content, Action<HttpContent> replaceContent, CancellationToken cancellationToken)
     {
-        if (content == null ||
-            !HttpContentUtils.IsTextContent(content.Headers.ContentType?.MediaType))
-        {
-            return string.Empty;
-        }
-
-        if (_options.MaxBodySizeBytes <= 0)
+        if (content == null || !HttpContentUtils.IsTextContent(content.Headers.ContentType?.MediaType) ||
+            _options.MaxBodySizeBytes <= 0)
             return string.Empty;
 
         var limit = _options.MaxBodySizeBytes;
         var buffer = new byte[limit + 1];
         var totalRead = 0;
-
         var stream = await content.ReadAsStreamAsync(cancellationToken);
-
-        int bytesRead;
-        while (totalRead < buffer.Length &&
-               (bytesRead = await stream.ReadAsync(buffer.AsMemory(totalRead, buffer.Length - totalRead), cancellationToken)) > 0)
+        var originalPosition = stream.CanSeek ? stream.Position : (long?)null;
+        try
         {
-            totalRead += bytesRead;
+            int bytesRead;
+            while (totalRead < buffer.Length &&
+                   (bytesRead = await stream.ReadAsync(buffer.AsMemory(totalRead, buffer.Length - totalRead), cancellationToken)) > 0)
+                totalRead += bytesRead;
+        }
+        finally
+        {
+            // Restore consumed bytes even when capture fails or is cancelled midway through a read.
+            if (originalPosition.HasValue)
+                stream.Position = originalPosition.Value;
+            else if (totalRead > 0)
+                replaceContent(new PrefixReplayHttpContent(content, stream, buffer[..totalRead]));
         }
 
-        var truncated = totalRead > limit;
-        var encoding = GetEncoding(content);
-        var body = encoding.GetString(buffer, 0, Math.Min(totalRead, limit));
-
-        if (truncated)
-        {
+        var body = GetEncoding(content).GetString(buffer, 0, Math.Min(totalRead, limit));
+        if (totalRead > limit)
             body += "[truncated]";
-        }
 
-        return new BodyCaptureResult(
-            JsonUtils.Format(RedactionUtils.RedactJsonFields(body, _options)),
-            stream,
-            buffer[..totalRead]);
+        return JsonUtils.Format(RedactionUtils.RedactJsonFields(body, _options));
     }
 
     private static Encoding GetEncoding(HttpContent content)
@@ -184,11 +186,6 @@ public class DebugProbeHttpClientHandler : DelegatingHandler
         {
             return Encoding.UTF8;
         }
-    }
-
-    private readonly record struct BodyCaptureResult(string Body, Stream Stream, byte[] BytesRead)
-    {
-        public static implicit operator BodyCaptureResult(string body) => new(body, Stream.Null, []);
     }
 
     private sealed class PrefixReplayHttpContent : HttpContent

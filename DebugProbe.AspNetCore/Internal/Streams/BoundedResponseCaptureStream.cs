@@ -5,6 +5,7 @@ internal sealed class BoundedResponseCaptureStream : Stream
     private readonly Stream _inner;
     private readonly MemoryStream _capture = new();
     private readonly int _captureLimit;
+    private bool _captureFailed;
 
     public BoundedResponseCaptureStream(Stream inner, int captureLimit)
     {
@@ -14,7 +15,7 @@ internal sealed class BoundedResponseCaptureStream : Stream
 
     public long TotalBytesWritten { get; private set; }
 
-    public byte[] CapturedBytes => _capture.ToArray();
+    public byte[] CapturedBytes => _captureFailed ? [] : _capture.ToArray();
 
     public override bool CanRead => false;
     public override bool CanSeek => false;
@@ -75,14 +76,20 @@ internal sealed class BoundedResponseCaptureStream : Stream
     {
         TotalBytesWritten += buffer.Length;
 
-        var remaining = _captureLimit - (int)_capture.Length;
-
-        if (remaining <= 0)
-        {
+        if (_captureFailed)
             return;
-        }
 
-        _capture.Write(buffer[..Math.Min(buffer.Length, remaining)]);
+        try
+        {
+            var remaining = _captureLimit - (int)_capture.Length;
+            if (remaining > 0)
+                _capture.Write(buffer[..Math.Min(buffer.Length, remaining)]);
+        }
+        catch (Exception)
+        {
+            // Only the diagnostic copy is optional; writes to the application's stream still propagate errors.
+            _captureFailed = true;
+        }
     }
 
     protected override void Dispose(bool disposing)
