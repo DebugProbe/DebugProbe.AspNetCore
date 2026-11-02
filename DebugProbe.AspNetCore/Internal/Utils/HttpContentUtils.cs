@@ -1,4 +1,4 @@
-﻿namespace DebugProbe.AspNetCore.Internal.Utils;
+namespace DebugProbe.AspNetCore.Internal.Utils;
 
 internal static class HttpContentUtils
 {
@@ -17,13 +17,4 @@ internal static class HttpContentUtils
                contentType.Contains("x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase);
     }
 
-    public static string Trim(string? value, int max = 2000)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return value ?? string.Empty;
-        }
-
-        return value.Length <= max ? value : value[..max];
-    }
 }

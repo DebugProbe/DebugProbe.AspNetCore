@@ -1,19 +1,19 @@
 <head>
     <meta charset="utf-8">
-    <link rel="icon" href="/debug/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="{{route_prefix}}/favicon.ico" type="image/x-icon">
     {{styles}}
 </head>
-<body>
+<body data-debugprobe-prefix="{{route_prefix}}">
     <div class="topbar">
         <span class="logo">
-            <img src="/debug/logo.png" alt="DebugProbe" />
+            <img src="{{route_prefix}}/logo.png" alt="DebugProbe" />
         </span>
         {{env_block}}
     </div>
 
     {{content}}
 
-    <script src="/debug/js/debugprobe-ui.js"></script>
-    <script src="/debug/js/debugprobe-compare-engine.js"></script>
-    <script src="/debug/js/debugprobe-compare-renderer.js"></script>
+    <script src="{{route_prefix}}/js/debugprobe-ui.js"></script>
+    <script src="{{route_prefix}}/js/debugprobe-compare-engine.js"></script>
+    <script src="{{route_prefix}}/js/debugprobe-compare-renderer.js"></script>
 </body>

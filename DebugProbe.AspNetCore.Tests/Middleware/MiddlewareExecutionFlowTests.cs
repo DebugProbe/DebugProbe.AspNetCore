@@ -9,6 +9,43 @@ namespace DebugProbe.AspNetCore.Tests.Middleware;
 
 public class MiddlewareExecutionFlowTests
 {
+    [Theory]
+    [InlineData(false, true, 32)]
+    [InlineData(true, false, 32)]
+    [InlineData(true, true, 0)]
+    public async Task Body_capture_controls_preserve_application_data(bool request, bool response, int limit)
+    {
+        await using var app = await DebugProbeTestApp.CreateAsync(
+            endpoints => endpoints.MapPost("/echo", async (HttpContext context) =>
+            {
+                using var reader = new StreamReader(context.Request.Body);
+                return Results.Text(await reader.ReadToEndAsync());
+            }),
+            options =>
+            {
+                options.CaptureRequestBody = request;
+                options.CaptureResponseBody = response;
+                options.MaxBodySizeKb = limit;
+            });
+
+        using var content = new StringContent("hello");
+        var result = await app.Client.PostAsync("/echo", content);
+        Assert.Equal("hello", await result.Content.ReadAsStringAsync());
+        Assert.Equal(request && limit > 0 ? "hello" : "", app.SingleEntry.RequestBody);
+        Assert.Equal(response && limit > 0 ? "hello" : "", app.SingleEntry.ResponseBody);
+        Assert.Equal(5, app.SingleEntry.ResponseSize);
+    }
+
+    [Fact]
+    public async Task Default_path_exclusions_can_be_removed()
+    {
+        await using var app = await DebugProbeTestApp.CreateAsync(
+            endpoints => endpoints.MapGet("/health", () => Results.Text("ok")),
+            options => options.ExcludedPaths = []);
+        await app.Client.GetAsync("/health");
+        Assert.Equal("/health", app.SingleEntry.Path);
+    }
+
     [Fact]
     public async Task Middleware_executes_and_request_continues_through_pipeline()
     {
@@ -34,7 +71,7 @@ public class MiddlewareExecutionFlowTests
     {
         await using var app = await DebugProbeTestApp.CreateAsync(
             endpoints => endpoints.MapGet("/health", () => Results.Ok()),
-            options => options.IgnorePaths = ["/health"]);
+            options => options.ExcludedPaths = ["/health"]);
 
         var response = await app.Client.GetAsync("/health");
 
@@ -46,7 +83,7 @@ public class MiddlewareExecutionFlowTests
     {
         await using var app = await DebugProbeTestApp.CreateAsync(
             endpoints => endpoints.MapGet("/healthcare", () => Results.Ok()),
-            options => options.IgnorePaths = ["/health"]);
+            options => options.ExcludedPaths = ["/health"]);
 
         var response = await app.Client.GetAsync("/healthcare");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

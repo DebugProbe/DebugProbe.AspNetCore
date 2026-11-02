@@ -21,7 +21,7 @@ public class OutgoingHttpClientCaptureOptionsTests
                     return Results.Text(body);
                 });
             },
-            configureOptions: options => options.CaptureOutgoingHttpClientRequests = false,
+            configureOptions: options => options.CaptureOutgoingRequests = false,
             configureServices: services =>
             {
                 services.AddHttpClient("outgoing")

@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 namespace DebugProbe.AspNetCore.Models;
 
 public class DebugEntry
@@ -32,5 +34,6 @@ public class DebugEntry
 
     public DateTimeOffset Timestamp { get; set; }
 
-    public List<DebugOutgoingRequest> OutgoingRequests { get; set; } = [];
+    /// <summary>Outgoing calls in capture completion order. Supports parallel additions and snapshot enumeration.</summary>
+    public ConcurrentQueue<DebugOutgoingRequest> OutgoingRequests { get; set; } = new();
 }

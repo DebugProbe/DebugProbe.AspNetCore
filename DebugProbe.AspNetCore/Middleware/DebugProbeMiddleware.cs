@@ -6,6 +6,7 @@ using DebugProbe.AspNetCore.Models;
 using DebugProbe.AspNetCore.Options;
 using DebugProbe.AspNetCore.Storage;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace DebugProbe.AspNetCore.Middleware;
 
@@ -15,30 +16,6 @@ namespace DebugProbe.AspNetCore.Middleware;
 /// </summary>
 public class DebugProbeMiddleware
 {
-    private const string BodyTooLargeMessage = "[Body too large]";
-    private const string BinaryBodyMessage = "[Body not captured: non-text content]";
-
-    private static readonly string[] DefaultIgnorePaths =
-    [
-        "/compare",
-        "/swagger",
-        "/health",
-        "/healthz",
-        "/ready",
-        "/live",
-        "/.well-known",
-
-        // browser noise
-        "/favicon.ico",
-
-        // scanners
-        "/.git",
-        "/wp-admin",
-        "/phpmyadmin",
-        "/cgi-bin",
-        "/server-status"
-    ];
-
     private readonly RequestDelegate _next;
     private readonly DebugProbeOptions _options;
 
@@ -56,35 +33,44 @@ public class DebugProbeMiddleware
     /// </summary>
     public async Task Invoke(HttpContext context, DebugEntryStore store)
     {
-        if (IsIgnoredPath(context.Request.Path))
+        var originalBody = context.Response.Body;
+        BoundedResponseCaptureStream? responseCapture = null;
+        DebugEntry? entry = null;
+        var requestBody = string.Empty;
+        var maxBodySize = 0;
+
+        try
+        {
+            if (_options.Enabled && !IsIgnoredPath(context.Request.Path))
+            {
+                maxBodySize = _options.MaxBodySizeBytes;
+                requestBody = _options.CaptureRequestBody && maxBodySize > 0
+                    ? await CaptureRequestBodyAsync(context, maxBodySize)
+                    : string.Empty;
+                responseCapture = new BoundedResponseCaptureStream(originalBody,
+                    _options.CaptureResponseBody && maxBodySize > 0 ? maxBodySize + 1 : 0);
+                entry = new DebugEntry { Id = Guid.NewGuid().ToString(), Timestamp = DateTime.UtcNow };
+                context.Response.Body = responseCapture;
+                context.Items["DebugProbeEntry"] = entry;
+            }
+        }
+        catch (Exception)
+        {
+            // Capture is best-effort; setup failures must not prevent the application from running.
+            context.Response.Body = originalBody;
+            responseCapture?.Dispose();
+            responseCapture = null;
+        }
+
+        if (responseCapture == null || entry == null)
         {
             await _next(context);
             return;
         }
 
-        var maxBodySize = _options.MaxBodyCaptureSizeBytes;
-
-        var requestBody = await CaptureRequestBodyAsync(context, maxBodySize);
-
-        var originalBody = context.Response.Body;
-
-        await using var responseCapture =
-            new BoundedResponseCaptureStream(originalBody, maxBodySize + 1);
-
-        context.Response.Body = responseCapture;
-
-        var entry = new DebugEntry
-        {
-            Id = Guid.NewGuid().ToString(),
-            Timestamp = DateTime.UtcNow
-        };
-
-        context.Items["DebugProbeEntry"] = entry;
-
         var started = Stopwatch.StartNew();
 
-        var exception = false;
-        string? exceptionResponseBody = null;
+        Exception? applicationException = null;
 
         try
         {
@@ -92,8 +78,7 @@ public class DebugProbeMiddleware
         }
         catch (Exception ex)
         {
-            exception = true;
-            exceptionResponseBody = ex.ToString();
+            applicationException = ex;
             throw;
         }
         finally
@@ -104,53 +89,63 @@ public class DebugProbeMiddleware
 
             context.Response.Body = originalBody;
 
-            var statusCode = exception && context.Response.StatusCode == 200 ? 500 : context.Response.StatusCode;
+            try
+            {
+                context.Items.Remove("DebugProbeEntry");
+                var statusCode = applicationException != null && context.Response.StatusCode == 200 ? 500 : context.Response.StatusCode;
 
-            var responseBody = exception
-                ? HttpContentUtils.Trim(exceptionResponseBody, maxBodySize)
-                : CaptureResponseBody(context, responseCapture, maxBodySize);
+                var responseBody = !_options.CaptureResponseBody || maxBodySize == 0
+                    ? string.Empty
+                    : applicationException != null
+                    ? CaptureExceptionBody(applicationException)
+                    : CaptureResponseBody(context, responseCapture);
 
-            entry.Method = context.Request.Method;
+                entry.Method = context.Request.Method;
 
-            entry.Path = context.Request.Path;
+                entry.Path = context.Request.Path;
 
-            entry.Query = RedactionUtils.RedactQueryString(context.Request.QueryString.ToString(), _options);
+                entry.Query = RedactionUtils.RedactQueryString(context.Request.QueryString.ToString(), _options);
 
-            entry.StatusCode = statusCode;
+                entry.StatusCode = statusCode;
 
-            entry.RequestTimeUtc = DateTime.UtcNow;
+                entry.RequestTimeUtc = DateTime.UtcNow;
 
-            entry.DurationMs = durationMs;
+                entry.DurationMs = durationMs;
 
-            entry.RequestSize = context.Request.ContentLength ?? Encoding.UTF8.GetByteCount(requestBody);
+                entry.RequestSize = context.Request.ContentLength ?? Encoding.UTF8.GetByteCount(requestBody);
 
-            entry.ResponseSize = responseCapture.TotalBytesWritten;
+                entry.ResponseSize = responseCapture.TotalBytesWritten;
 
-            entry.RequestHeaders =
-                context.Request.Headers.ToDictionary(
-                    x => x.Key,
-                    x => RedactionUtils.RedactHeader(x.Key, x.Value.ToString(), _options));
+                entry.RequestHeaders =
+                    context.Request.Headers.ToDictionary(
+                        x => x.Key,
+                        x => RedactionUtils.RedactHeader(x.Key, x.Value.ToString(), _options));
 
-            entry.RequestUrl =
-                RedactionUtils.RedactUrl(
-                    $"{context.Request.Scheme}://{context.Request.Host}" +
-                    $"{context.Request.Path}{context.Request.QueryString}",
-                    _options);
+                entry.RequestUrl =
+                    RedactionUtils.RedactUrl(
+                        $"{context.Request.Scheme}://{context.Request.Host}" +
+                        $"{context.Request.Path}{context.Request.QueryString}",
+                        _options);
 
-            entry.RequestBody = RedactionUtils.RedactJsonFields(
-                HttpContentUtils.Trim(requestBody, maxBodySize),
-                _options);
+                entry.RequestBody = requestBody;
 
-            entry.ResponseBody = RedactionUtils.RedactJsonFields(
-                HttpContentUtils.Trim(responseBody, maxBodySize),
-                _options);
+                entry.ResponseBody = responseBody;
 
-            entry.ResponseHeaders =
-                context.Response.Headers.ToDictionary(
-                    x => x.Key,
-                    x => RedactionUtils.RedactHeader(x.Key, x.Value.ToString(), _options));
+                entry.ResponseHeaders =
+                    context.Response.Headers.ToDictionary(
+                        x => x.Key,
+                        x => RedactionUtils.RedactHeader(x.Key, x.Value.ToString(), _options));
 
-            store.Add(entry);
+                store.Add(entry);
+            }
+            catch (Exception)
+            {
+                // Never replace the application response or its original exception with a capture failure.
+            }
+            finally
+            {
+                responseCapture.Dispose();
+            }
         }
     }
 
@@ -158,8 +153,7 @@ public class DebugProbeMiddleware
     {
         var path = requestPath.Value ?? string.Empty;
 
-        return DefaultIgnorePaths
-            .Concat(_options.IgnorePaths)
+        return _options.ExcludedPaths
             .Append(_options.RoutePrefix)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Any(ignorePath => 
@@ -167,7 +161,7 @@ public class DebugProbeMiddleware
                 path.StartsWith(ignorePath.TrimEnd('/') + "/", StringComparison.OrdinalIgnoreCase));
     }
 
-    private static async Task<string> CaptureRequestBodyAsync(HttpContext context, int maxBodySize)
+    private async Task<string> CaptureRequestBodyAsync(HttpContext context, int maxBodySize)
     {
         if (!HasBody(context.Request))
         {
@@ -176,12 +170,7 @@ public class DebugProbeMiddleware
 
         if (!HttpContentUtils.IsTextContent(context.Request.ContentType))
         {
-            return BinaryBodyMessage;
-        }
-
-        if (context.Request.ContentLength > maxBodySize)
-        {
-            return BodyTooLargeMessage;
+            return context.Request.ContentLength == 0 ? string.Empty : BodyCaptureUtils.BinaryBodyMessage;
         }
 
         context.Request.EnableBuffering();
@@ -191,34 +180,38 @@ public class DebugProbeMiddleware
             return string.Empty;
         }
 
-        context.Request.Body.Position = 0;
-
-        var bytes = await ReadAtMostAsync(context.Request.Body, maxBodySize + 1);
-
-        context.Request.Body.Position = 0;
-
-        return bytes.Length > maxBodySize ? BodyTooLargeMessage : Encoding.UTF8.GetString(bytes);
+        var originalPosition = context.Request.Body.Position;
+        try
+        {
+            var bytes = await ReadAtMostAsync(context.Request.Body, maxBodySize + 1);
+            
+            return BodyCaptureUtils.Format(bytes, bytes.Length, context.Request.ContentType, _options);
+        }
+        finally
+        {
+            context.Request.Body.Position = originalPosition;
+        }
     }
 
-    private static string CaptureResponseBody(HttpContext context, BoundedResponseCaptureStream responseCapture, int maxBodySize)
+    private string CaptureResponseBody(HttpContext context, BoundedResponseCaptureStream responseCapture)
     {
-        if (!HttpContentUtils.IsTextContent(context.Response.ContentType))
-        {
-            return responseCapture.TotalBytesWritten == 0
-                ? string.Empty
-                : BinaryBodyMessage;
-        }
+        return BodyCaptureUtils.Format(responseCapture.CapturedBytes, responseCapture.TotalBytesWritten,
+            context.Response.ContentType, _options);
+    }
 
-        if (responseCapture.TotalBytesWritten > maxBodySize)
-        {
-            return BodyTooLargeMessage;
-        }
-
-        return Encoding.UTF8.GetString(responseCapture.CapturedBytes);
+    private string CaptureExceptionBody(Exception exception)
+    {
+        var bytes = Encoding.UTF8.GetBytes(exception.ToString());
+       
+        return BodyCaptureUtils.Format(bytes, bytes.Length, "text/plain; charset=utf-8", _options);
     }
 
     private static bool HasBody(HttpRequest request)
     {
+        var detection = request.HttpContext.Features.Get<IHttpRequestBodyDetectionFeature>();
+        if (detection != null)
+            return detection.CanHaveBody;
+
         if (request.ContentLength == 0)
         {
             return false;

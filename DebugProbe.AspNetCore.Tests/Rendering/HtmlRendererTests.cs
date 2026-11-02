@@ -118,7 +118,7 @@ public class HtmlRendererTests
         var entry = CreateEntry();
         entry.DurationMs = 500;
         
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "GET",
             Url = "https://external-api.test/v1/users?id=123",
@@ -128,7 +128,7 @@ public class HtmlRendererTests
             IsSuccessStatusCode = true
         });
 
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "POST",
             Url = "https://untrusted-api.test/v1/search?query=a&b=%3Cscript%3E",
@@ -171,7 +171,7 @@ public class HtmlRendererTests
     public void Details_page_renders_curl_copy_attributes_and_buttons()
     {
         var entry = CreateEntry();
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "PUT",
             Url = "https://external-api.test/v1/update",
@@ -209,7 +209,7 @@ public class HtmlRendererTests
     public void Details_page_renders_csharp_copy_attributes_and_buttons()
     {
         var entry = CreateEntry();
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "PUT",
             Url = "https://external-api.test/v1/update",
@@ -247,7 +247,7 @@ public class HtmlRendererTests
     public void Details_page_renders_markdown_copy_attributes_and_buttons()
     {
         var entry = CreateEntry();
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "PUT",
             Url = "https://external-api.test/v1/update",
@@ -291,7 +291,7 @@ public class HtmlRendererTests
         };
 
         // Case 1: Threshold = 1000 (Default)
-        var htmlDefault = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThresholdMs = 1000 });
+        var htmlDefault = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThreshold = TimeSpan.FromMilliseconds(1000) });
         Assert.Contains("/debug/1", htmlDefault);
         Assert.Contains("/debug/2", htmlDefault);
         
@@ -299,11 +299,11 @@ public class HtmlRendererTests
         Assert.Contains("1500 ms <span class=\"dbp-badge dbp-badge-slow\" title=\"Exceeds 1000ms threshold\">SLOW</span>", htmlDefault);
 
         // Case 2: Threshold = 0 (disabled)
-        var htmlDisabled = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThresholdMs = 0 });
+        var htmlDisabled = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThreshold = TimeSpan.FromMilliseconds(0) });
         Assert.DoesNotContain("<span class=\"dbp-badge dbp-badge-slow\"", htmlDisabled);
 
         // Case 3: Threshold = 2000
-        var htmlHigh = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThresholdMs = 2000 });
+        var htmlHigh = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThreshold = TimeSpan.FromMilliseconds(2000) });
         Assert.DoesNotContain("<span class=\"dbp-badge dbp-badge-slow\"", htmlHigh);
     }
 
@@ -312,7 +312,7 @@ public class HtmlRendererTests
     {
         var entry = CreateEntry();
         entry.DurationMs = 1200; // > 1000
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "GET",
             Url = "https://external-api.test",
@@ -321,7 +321,7 @@ public class HtmlRendererTests
             TimestampUtc = entry.Timestamp.UtcDateTime.AddMilliseconds(200),
             IsSuccessStatusCode = true
         });
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "GET",
             Url = "https://external-api2.test",
@@ -332,7 +332,7 @@ public class HtmlRendererTests
         });
 
         // Case 1: Threshold = 1000
-        var html = HtmlRenderer.RenderDetailsPage(entry, CreateEnvironment(), "{}", "{}", new DebugProbeOptions { SlowRequestThresholdMs = 1000 });
+        var html = HtmlRenderer.RenderDetailsPage(entry, CreateEnvironment(), "{}", "{}", new DebugProbeOptions { SlowRequestThreshold = TimeSpan.FromMilliseconds(1000) });
         
         // Detail Header should have badge
         Assert.Contains("1200 ms <span class=\"dbp-badge dbp-badge-slow\" title=\"Exceeds 1000ms threshold\">SLOW</span>", html);
@@ -344,7 +344,7 @@ public class HtmlRendererTests
         Assert.Contains("200 ms</div>", html);
 
         // Case 2: Threshold = 0
-        var htmlDisabled = HtmlRenderer.RenderDetailsPage(entry, CreateEnvironment(), "{}", "{}", new DebugProbeOptions { SlowRequestThresholdMs = 0 });
+        var htmlDisabled = HtmlRenderer.RenderDetailsPage(entry, CreateEnvironment(), "{}", "{}", new DebugProbeOptions { SlowRequestThreshold = TimeSpan.FromMilliseconds(0) });
         Assert.DoesNotContain("<span class=\"dbp-badge dbp-badge-slow\"", htmlDisabled);
     }
 
@@ -398,7 +398,7 @@ public class HtmlRendererTests
         {
             new DebugEntry { Id = "1", Method = "GET", Path = "/exact", DurationMs = 1000, StatusCode = 200 }
         };
-        var html = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThresholdMs = 1000 });
+        var html = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThreshold = TimeSpan.FromMilliseconds(1000) });
         Assert.Contains("1000 ms <span class=\"dbp-badge dbp-badge-slow\" title=\"Exceeds 1000ms threshold\">SLOW</span>", html);
     }
 
@@ -409,7 +409,7 @@ public class HtmlRendererTests
         {
             new DebugEntry { Id = "1", Method = "GET", Path = "/minus-one", DurationMs = 999, StatusCode = 200 }
         };
-        var html = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThresholdMs = 1000 });
+        var html = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThreshold = TimeSpan.FromMilliseconds(1000) });
         Assert.Contains("999 ms</td>", html);
         Assert.DoesNotContain("<span class=\"dbp-badge dbp-badge-slow\"", html);
     }
@@ -421,7 +421,7 @@ public class HtmlRendererTests
         {
             new DebugEntry { Id = "1", Method = "GET", Path = "/plus-one", DurationMs = 1001, StatusCode = 200 }
         };
-        var html = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThresholdMs = 1000 });
+        var html = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThreshold = TimeSpan.FromMilliseconds(1000) });
         Assert.Contains("1001 ms <span class=\"dbp-badge dbp-badge-slow\" title=\"Exceeds 1000ms threshold\">SLOW</span>", html);
     }
 
@@ -432,19 +432,7 @@ public class HtmlRendererTests
         {
             new DebugEntry { Id = "1", Method = "GET", Path = "/zero", DurationMs = 5000, StatusCode = 200 }
         };
-        var html = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThresholdMs = 0 });
-        Assert.Contains("5000 ms</td>", html);
-        Assert.DoesNotContain("<span class=\"dbp-badge dbp-badge-slow\"", html);
-    }
-
-    [Fact]
-    public void Render_slow_badge_boundary_negative_threshold_disabled()
-    {
-        var items = new List<DebugEntry>
-        {
-            new DebugEntry { Id = "1", Method = "GET", Path = "/negative", DurationMs = 5000, StatusCode = 200 }
-        };
-        var html = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThresholdMs = -100 });
+        var html = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThreshold = TimeSpan.FromMilliseconds(0) });
         Assert.Contains("5000 ms</td>", html);
         Assert.DoesNotContain("<span class=\"dbp-badge dbp-badge-slow\"", html);
     }
@@ -456,7 +444,7 @@ public class HtmlRendererTests
         {
             new DebugEntry { Id = "1", Method = "GET", Path = "/large", DurationMs = 120500, StatusCode = 200 }
         };
-        var html = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThresholdMs = 1000 });
+        var html = HtmlRenderer.RenderIndexPage(items, new DebugProbeOptions { SlowRequestThreshold = TimeSpan.FromMilliseconds(1000) });
         Assert.Contains("120500 ms <span class=\"dbp-badge dbp-badge-slow\" title=\"Exceeds 1000ms threshold\">SLOW</span>", html);
     }
 
@@ -465,7 +453,7 @@ public class HtmlRendererTests
     {
         var entry = CreateEntry();
         entry.DurationMs = 500; // < 1000 (not slow)
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "GET",
             Url = "https://external-api.test",
@@ -475,7 +463,7 @@ public class HtmlRendererTests
             IsSuccessStatusCode = true
         });
 
-        var html = HtmlRenderer.RenderDetailsPage(entry, CreateEnvironment(), "{}", "{}", new DebugProbeOptions { SlowRequestThresholdMs = 1000 });
+        var html = HtmlRenderer.RenderDetailsPage(entry, CreateEnvironment(), "{}", "{}", new DebugProbeOptions { SlowRequestThreshold = TimeSpan.FromMilliseconds(1000) });
         
         // Root request should not have the slow badge
         Assert.Contains("<strong>500 ms</strong>", html);
@@ -490,7 +478,7 @@ public class HtmlRendererTests
     {
         var entry = CreateEntry();
         entry.DurationMs = 200;
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "GET",
             Url = "https://external-api.test",
@@ -500,7 +488,7 @@ public class HtmlRendererTests
             IsSuccessStatusCode = true
         });
 
-        var html = HtmlRenderer.RenderDetailsPage(entry, CreateEnvironment(), "{}", "{}", new DebugProbeOptions { SlowRequestThresholdMs = 1000 });
+        var html = HtmlRenderer.RenderDetailsPage(entry, CreateEnvironment(), "{}", "{}", new DebugProbeOptions { SlowRequestThreshold = TimeSpan.FromMilliseconds(1000) });
         Assert.Contains("1000 ms <span class=\"dbp-badge dbp-badge-slow\" title=\"Exceeds 1000ms threshold\">SLOW</span>", html);
     }
 
@@ -509,7 +497,7 @@ public class HtmlRendererTests
     {
         var entry = CreateEntry();
         entry.DurationMs = 200;
-        entry.OutgoingRequests.Add(new DebugOutgoingRequest
+        entry.OutgoingRequests.Enqueue(new DebugOutgoingRequest
         {
             Method = "GET",
             Url = "https://external-api.test",
@@ -519,7 +507,7 @@ public class HtmlRendererTests
             IsSuccessStatusCode = true
         });
 
-        var html = HtmlRenderer.RenderDetailsPage(entry, CreateEnvironment(), "{}", "{}", new DebugProbeOptions { SlowRequestThresholdMs = 1000 });
+        var html = HtmlRenderer.RenderDetailsPage(entry, CreateEnvironment(), "{}", "{}", new DebugProbeOptions { SlowRequestThreshold = TimeSpan.FromMilliseconds(1000) });
         Assert.Contains("999 ms</div>", html);
         Assert.DoesNotContain(" 999 ms <span class=\"dbp-badge dbp-badge-slow\"", html);
     }

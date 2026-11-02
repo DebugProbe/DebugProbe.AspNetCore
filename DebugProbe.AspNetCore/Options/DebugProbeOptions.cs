@@ -1,114 +1,59 @@
 namespace DebugProbe.AspNetCore.Options;
 
-/// <summary>
-/// Configuration options for DebugProbe.
-/// </summary>
+/// <summary>Configuration options for DebugProbe.</summary>
 public class DebugProbeOptions
 {
-    /// <summary>
-    /// Maximum number of stored entries.
-    /// </summary>
-    public int MaxEntries { get; set; } = 20;
+    /// <summary>Enables request capture and DebugProbe endpoints.</summary>
+    public bool Enabled { get; set; } = true;
 
-    /// <summary>
-    /// Maximum captured request or response body size in kilobytes.
-    /// </summary>
-    private int _maxBodyCaptureSizeKb = 32;
-    public int MaxBodyCaptureSizeKb
-    {
-        get => _maxBodyCaptureSizeKb;
-        set
-        {
-            if (value < 0)
-                throw new ArgumentOutOfRangeException(nameof(MaxBodyCaptureSizeKb),
-                    "MaxBodyCaptureSizeKb must be 0 or greater. Use 0 to disable body capture.");
-            _maxBodyCaptureSizeKb = value;
-        }
-    }
+    /// <summary>Maximum number of requests kept in memory.</summary>
+    public int MaxRequests { get; set; } = 20;
 
-    internal int MaxBodyCaptureSizeBytes => MaxBodyCaptureSizeKb * 1024;
+    /// <summary>Maximum captured size of each body in kilobytes. Zero disables body capture.</summary>
+    public int MaxBodySizeKb { get; set; } = 32;
 
-    /// <summary>
-    /// Duration in milliseconds above which a request or outgoing dependency is flagged as slow in the UI. Set to 0 or negative to disable the badge.
-    /// </summary>
-    public int SlowRequestThresholdMs { get; set; } = 1000;
+    internal int MaxBodySizeBytes => checked(MaxBodySizeKb * 1024);
 
-    /// <summary>
-    /// Lookback window in minutes for the request rate sparkline and error rate trend.
-    /// Defaults to 30. Must be greater than or equal to 2.
-    /// </summary>
-    public int TrendLookbackMinutes { get; set; } = 2;
+    /// <summary>Captures incoming and outgoing request bodies.</summary>
+    public bool CaptureRequestBody { get; set; } = true;
 
-    /// <summary>
-    /// Allows compare operations to target localhost and private network addresses.
-    /// Defaults to true in Development and false in other environments unless explicitly configured.
-    /// </summary>
+    /// <summary>Captures incoming and outgoing response bodies.</summary>
+    public bool CaptureResponseBody { get; set; } = true;
+
+    /// <summary>Duration at which requests are marked slow. Zero disables the badge.</summary>
+    public TimeSpan SlowRequestThreshold { get; set; } = TimeSpan.FromSeconds(1);
+
+    /// <summary>Allows compare operations against localhost and private networks. Null allows them only in Development.</summary>
     public bool? AllowLocalCompareTargets { get; set; }
 
-    /// <summary>
-    /// Allows DebugProbe UI endpoints to be registered in Production.
-    /// Defaults to false.
-    /// </summary>
+    /// <summary>Allows dashboard and API endpoints in Production. Capture remains enabled independently.</summary>
     public bool AllowUiInProduction { get; set; }
 
-    /// <summary>
-    /// Optional ASP.NET Core authorization policy required for DebugProbe endpoints.
-    /// When not configured, DebugProbe endpoints do not require authorization.
-    /// </summary>
+    /// <summary>Optional authorization policy required for all DebugProbe endpoints.</summary>
     public string? AuthorizationPolicy { get; set; }
 
-    /// <summary>
-    /// Captures outgoing requests made through IHttpClientFactory.
-    /// Defaults to true.
-    /// </summary>
-    public bool CaptureOutgoingHttpClientRequests { get; set; } = true;
+    /// <summary>Captures outgoing requests made through IHttpClientFactory during an incoming request.</summary>
+    public bool CaptureOutgoingRequests { get; set; } = true;
 
     /// <summary>
-    /// Enables automatic comparison of trace payloads for the same endpoint across different environments.
-    /// Defaults to false.
+    /// Paths excluded from capture, including child paths. Replace with an empty array to capture all application paths.
+    /// DebugProbe's own endpoints are always excluded.
     /// </summary>
-    public bool AutoEnvironmentDiff { get; set; } = false;
-
-    /// <summary>
-    /// Additional request paths to ignore.
-    /// </summary>
-    public string[] IgnorePaths { get; set; } = [];
-
-    /// <summary>
-    /// Header names whose values should be redacted before traces are stored.
-    /// </summary>
-    public string[] RedactedHeaders { get; set; } =
+    public string[] ExcludedPaths { get; set; } =
     [
-        "Authorization",
-        "Cookie",
-        "Set-Cookie"
+        "/swagger", "/health", "/healthz", "/ready", "/live", "/.well-known",
+        "/favicon.ico", "/.git", "/wp-admin", "/phpmyadmin", "/cgi-bin", "/server-status"
     ];
 
-    /// <summary>
-    /// Query parameter names whose values should be redacted before traces are stored.
-    /// </summary>
+    /// <summary>Header names whose values are replaced with [REDACTED]. Matching is case-insensitive.</summary>
+    public string[] RedactedHeaders { get; set; } = ["Authorization", "Cookie", "Set-Cookie"];
+
+    /// <summary>Query parameter names whose values are replaced with [REDACTED].</summary>
     public string[] RedactedQueryParameters { get; set; } = [];
 
-    /// <summary>
-    /// JSON property names whose values should be redacted before traces are stored.
-    /// </summary>
+    /// <summary>JSON property names whose values are replaced with [REDACTED].</summary>
     public string[] RedactedJsonFields { get; set; } = [];
 
-    /// <summary>
-    /// Value used when sensitive data is redacted.
-    /// </summary>
-    public string RedactionText { get; set; } = "[REDACTED]";
-
-    /// <summary>
-    /// The route prefix for the DebugProbe dashboard and API endpoints.
-    /// Defaults to <c>"/debug"</c>. A leading slash is added automatically if omitted.
-    /// </summary>
-    private string _routePrefix = "/debug";
-    public string RoutePrefix
-    {
-        get => _routePrefix;
-        set => _routePrefix = string.IsNullOrWhiteSpace(value)
-            ? "/debug"
-            : "/" + value.TrimStart('/');
-    }
+    /// <summary>Route prefix for all DebugProbe endpoints. A leading slash is optional.</summary>
+    public string RoutePrefix { get; set; } = "/debug";
 }

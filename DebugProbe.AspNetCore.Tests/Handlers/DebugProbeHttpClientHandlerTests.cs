@@ -48,8 +48,8 @@ public class DebugProbeHttpClientHandlerTests
         Assert.True(outgoing.IsSuccessStatusCode);
         Assert.Equal("[REDACTED]", outgoing.RequestHeaders["Authorization"]);
         Assert.Equal("remote", outgoing.ResponseHeaders["X-Trace"]);
-        Assert.Contains("\"name\": \"Ada\"", outgoing.RequestBody);
-        Assert.Contains("\"ok\": true", outgoing.ResponseBody);
+        Assert.Contains("\"name\":\"Ada\"", outgoing.RequestBody);
+        Assert.Contains("\"ok\":true", outgoing.ResponseBody);
     }
 
     [Fact]
@@ -91,8 +91,8 @@ public class DebugProbeHttpClientHandlerTests
 
         Assert.Equal("https://api.example.test/orders?token=[REDACTED]&safe=yes", outgoing.Url);
         Assert.Equal("[REDACTED]", outgoing.RequestHeaders["X-Api-Key"]);
-        Assert.Contains("\"password\": \"[REDACTED]\"", outgoing.RequestBody);
-        Assert.Contains("\"refreshToken\": \"[REDACTED]\"", outgoing.ResponseBody);
+        Assert.Contains("\"password\":\"[REDACTED]\"", outgoing.RequestBody);
+        Assert.Contains("\"refreshToken\":\"[REDACTED]\"", outgoing.ResponseBody);
     }
 
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> send) : HttpMessageHandler

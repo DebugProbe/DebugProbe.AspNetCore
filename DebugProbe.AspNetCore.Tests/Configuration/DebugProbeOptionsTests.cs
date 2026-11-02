@@ -2,6 +2,7 @@ using DebugProbe.AspNetCore.Extensions;
 using DebugProbe.AspNetCore.Options;
 using DebugProbe.AspNetCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace DebugProbe.AspNetCore.Tests.Configuration;
 
@@ -12,17 +13,19 @@ public class DebugProbeOptionsTests
     {
         var options = new DebugProbeOptions();
 
-        Assert.Equal(20, options.MaxEntries);
-        Assert.Equal(32, options.MaxBodyCaptureSizeKb);
+        Assert.Equal(20, options.MaxRequests);
+        Assert.Equal(32, options.MaxBodySizeKb);
         Assert.Null(options.AllowLocalCompareTargets);
         Assert.False(options.AllowUiInProduction);
         Assert.Null(options.AuthorizationPolicy);
-        Assert.True(options.CaptureOutgoingHttpClientRequests);
-        Assert.Empty(options.IgnorePaths);
+        Assert.True(options.CaptureOutgoingRequests);
+        Assert.Contains("/health", options.ExcludedPaths);
+        Assert.True(options.Enabled);
+        Assert.True(options.CaptureRequestBody);
+        Assert.True(options.CaptureResponseBody);
         Assert.Equal(["Authorization", "Cookie", "Set-Cookie"], options.RedactedHeaders);
         Assert.Empty(options.RedactedQueryParameters);
         Assert.Empty(options.RedactedJsonFields);
-        Assert.Equal("[REDACTED]", options.RedactionText);
     }
 
     [Fact]
@@ -32,97 +35,83 @@ public class DebugProbeOptionsTests
 
         services.AddDebugProbe(options =>
         {
-            options.MaxEntries = 2;
-            options.MaxBodyCaptureSizeKb = 4;
+            options.MaxRequests = 2;
+            options.MaxBodySizeKb = 4;
             options.AllowLocalCompareTargets = true;
             options.AuthorizationPolicy = "DebugProbePolicy";
-            options.IgnorePaths = ["/health"];
-            options.CaptureOutgoingHttpClientRequests = false;
+            options.ExcludedPaths = ["/health"];
+            options.CaptureOutgoingRequests = false;
             options.RedactedHeaders = ["X-Api-Key"];
             options.RedactedQueryParameters = ["token"];
             options.RedactedJsonFields = ["password"];
-            options.RedactionText = "***";
         });
 
         using var provider = services.BuildServiceProvider();
         var options = provider.GetRequiredService<DebugProbeOptions>();
         var store = provider.GetRequiredService<DebugEntryStore>();
 
-        Assert.Equal(2, options.MaxEntries);
-        Assert.Equal(4, options.MaxBodyCaptureSizeKb);
+        Assert.Equal(2, options.MaxRequests);
+        Assert.Equal(4, options.MaxBodySizeKb);
         Assert.True(options.AllowLocalCompareTargets);
         Assert.Equal("DebugProbePolicy", options.AuthorizationPolicy);
-        Assert.Equal(["/health"], options.IgnorePaths);
-        Assert.False(options.CaptureOutgoingHttpClientRequests);
+        Assert.Equal(["/health"], options.ExcludedPaths);
+        Assert.False(options.CaptureOutgoingRequests);
         Assert.Equal(["X-Api-Key"], options.RedactedHeaders);
         Assert.Equal(["token"], options.RedactedQueryParameters);
         Assert.Equal(["password"], options.RedactedJsonFields);
-        Assert.Equal("***", options.RedactionText);
         Assert.NotNull(store.Environment);
     }
-    [Fact]
-    public void MaxEntries_zero_throws_InvalidOperationException()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Invalid_request_limit_is_rejected(int limit)
     {
         var services = new ServiceCollection();
-
-        var exception = Assert.Throws<InvalidOperationException>(() =>
-            services.AddDebugProbe(options =>
-            {
-                options.MaxEntries = 0;
-            }));
-
-        Assert.Contains("MaxEntries", exception.Message);
+        services.AddDebugProbe(options => options.MaxRequests = limit);
+        using var provider = services.BuildServiceProvider();
+        var exception = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<DebugProbeOptions>());
+        Assert.Contains("MaxRequests", exception.Message);
     }
 
-    [Fact]
-    public void MaxEntries_negative_throws_InvalidOperationException()
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(int.MaxValue)]
+    public void Invalid_body_limit_is_rejected(int limit)
     {
         var services = new ServiceCollection();
-
-        var exception = Assert.Throws<InvalidOperationException>(() =>
-            services.AddDebugProbe(options =>
-            {
-                options.MaxEntries = -1;
-            }));
-
-        Assert.Contains("MaxEntries", exception.Message);
+        services.AddDebugProbe(options => options.MaxBodySizeKb = limit);
+        using var provider = services.BuildServiceProvider();
+        var exception = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<DebugProbeOptions>());
+        Assert.Contains("MaxBodySizeKb", exception.Message);
     }
 
     [Fact]
-    public void MaxBodyCaptureSizeKb_negative_throws_ArgumentOutOfRangeException()
+    public void MaxBodySizeKb_zero_is_valid()
     {
         var options = new DebugProbeOptions();
+        options.MaxBodySizeKb = 0;
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxBodyCaptureSizeKb = -1);
+        Assert.Equal(0, options.MaxBodySizeKb);
     }
 
     [Fact]
-    public void MaxBodyCaptureSizeKb_zero_is_valid()
+    public void SlowRequestThreshold_defaults_to_1000()
     {
         var options = new DebugProbeOptions();
-        options.MaxBodyCaptureSizeKb = 0;
-
-        Assert.Equal(0, options.MaxBodyCaptureSizeKb);
+        Assert.Equal(TimeSpan.FromSeconds(1), options.SlowRequestThreshold);
     }
 
     [Fact]
-    public void SlowRequestThresholdMs_defaults_to_1000()
-    {
-        var options = new DebugProbeOptions();
-        Assert.Equal(1000, options.SlowRequestThresholdMs);
-    }
-
-    [Fact]
-    public void SlowRequestThresholdMs_can_be_configured()
+    public void SlowRequestThreshold_can_be_configured()
     {
         var services = new ServiceCollection();
         services.AddDebugProbe(options =>
         {
-            options.SlowRequestThresholdMs = 500;
+            options.SlowRequestThreshold = TimeSpan.FromMilliseconds(500);
         });
 
         using var provider = services.BuildServiceProvider();
         var options = provider.GetRequiredService<DebugProbeOptions>();
-        Assert.Equal(500, options.SlowRequestThresholdMs);
+        Assert.Equal(TimeSpan.FromMilliseconds(500), options.SlowRequestThreshold);
     }
 }
