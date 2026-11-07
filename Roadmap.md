@@ -1,571 +1,130 @@
-# DebugProbe Roadmap & Feature Planning
+# DebugProbe roadmap
 
-> A structured roadmap for evolving DebugProbe from a lightweight request inspector into a production-friendly debugging and observability toolkit for ASP.NET Core applications.
+DebugProbe helps developers inspect HTTP traffic, investigate exceptions and compare application behavior across environments.
 
----
+The development order is **DebugProbe.AspNetCore → DebugProbe Server → DebugProbe Cloud**. The package remains useful on its own. The immediate product priority is completing the customer-hosted Server before building the hosted SaaS service.
 
-# Vision
+This roadmap describes current capabilities, agreed next steps and later candidates. It is not a release schedule; future features have no assigned package versions or delivery dates.
 
-DebugProbe aims to provide developers with a lightweight, embedded debugging experience for inspecting HTTP traffic inside ASP.NET Core applications — without requiring external infrastructure or heavyweight observability platforms.
+## Product responsibilities
 
-The long-term direction is to keep DebugProbe:
+| Product | Responsibility | Current stage |
+| --- | --- | --- |
+| **DebugProbe.AspNetCore** | Capture HTTP data inside an application, provide local inspection, optionally export telemetry | Implemented; optional Server export is the 2.1.0 feature |
+| **DebugProbe Server** | Store telemetry from multiple applications and instances, provide a central UI, manage users and permissions | In development; core ingestion, persistence, access management and local Docker setup are implemented |
+| **DebugProbe Cloud** | Operate DebugProbe as a hosted subscription service with customer isolation and managed infrastructure | Planned after Server is ready |
 
-* Lightweight
-* Developer-first
-* Easy to install
-* Safe for internal environments
-* Useful for distributed API debugging
-* Extensible without becoming overly complex
+Customers host Server on their infrastructure, with IIS or Docker as deployment targets. DebugProbe will host and operate Cloud. Both destinations should use a compatible, versioned ingestion contract so applications can keep using the same package and configure their destination.
 
----
+## Implemented in DebugProbe.AspNetCore
 
-# Current Capabilities
+### Local inspection and comparison
 
-## Existing Features
+- Incoming request and response capture: method, path, URL/query, status, duration, headers and bounded bodies.
+- Outgoing HTTP capture through `IHttpClientFactory` during an active captured request, attached to that request's local ID.
+- Embedded `/debug` dashboard, request details, outgoing calls, exception grouping and manual trace comparison across applications/environments.
+- JSON-aware body differences and displayed request/environment metadata in compare. Cross-service distributed tracing is a separate future capability.
+- Bounded, thread-safe in-memory storage controlled by `MaxRequests`; local data lasts for the application process lifetime.
 
-### DebugProbe Server Export (2.1)
+### Configuration and capture controls
 
-* Optional authenticated HTTP export of requests, unhandled exceptions and heartbeats
-* Bounded in-memory queue and one background sender; existing redaction and capture settings apply
-* Best-effort delivery with timeout, bounded shutdown drain and throttled warnings
-* Local dashboard remains independent; no retry or disk-spool dependencies
+- .NET 10 target for package 2.x, dependency injection and startup options validation.
+- Custom route prefix and configurable path exclusions, including common health/documentation endpoints by default.
+- `MaxBodySizeKb`, `CaptureRequestBody` and `CaptureResponseBody` for incoming and outgoing body capture.
+- Configurable header, query-parameter and JSON-field redaction. Header defaults cover Authorization, Cookie and Set-Cookie; query and JSON lists must be configured by the application.
+- Dashboard/API endpoints disabled by default in Production, with an optional ASP.NET Core authorization policy for registered DebugProbe endpoints.
+- Capture failures isolated from application responses and original exceptions.
 
-### HTTP Traffic Inspection
+### Optional Server export in 2.1.0
 
-* Incoming request capture
-* Response capture
-* Request body inspection
-* Response body inspection
-* Header inspection
-* Timing and duration tracking
+- Authenticated export of captured requests, unhandled exceptions and application heartbeats.
+- Application/environment identity and a per-process instance ID; scoped ingestion keys issued by Server.
+- Existing capture/redaction settings applied to exported data, with the export client excluded from outgoing instrumentation.
+- A bounded in-memory queue, one background sender, configurable send timeout and heartbeat interval, throttled warnings and a bounded graceful shutdown drain.
+- Best-effort delivery: failed sends and full queues drop events. There are no retries, durable buffers or delivery guarantees in 2.1.0.
+- Server export works with the local Production UI disabled and is independent of local history retention.
 
-### Embedded Debug UI
+See the [README](https://github.com/DebugProbe/DebugProbe.AspNetCore/blob/main/README.md) for the current public settings, defaults and migration guidance.
 
-* `/debug` dashboard
-* Request details page
-* Compare view between environments
-* Embedded static assets
+## Implemented Server foundation
 
-### Environment Comparison
+These are development capabilities, not a claim that the production release is finished:
 
-* Remote trace comparison
-* Environment metadata support
+- .NET 10 API and central React UI for requests, exceptions, applications and environments.
+- PostgreSQL persistence through EF Core with versioned migrations and a data-access boundary that can support a later SQL Server provider.
+- ASP.NET Core Identity accounts and cookie login.
+- Administrator, Maintainer and Viewer roles, with application/environment access grants enforced by the API.
+- Ingestion API keys scoped to an application and environment, stored as hashes, with creation, revocation and rotation.
+- UI for managing users, grants and ingestion keys.
+- Local Docker development setup with PostgreSQL, bundled UI, persistent database/session-key volumes and automatic development migrations.
+- Package-to-server delivery exercised with SampleApi and PostgreSQL; integration checks cover authentication, scope isolation and key lifecycle.
 
-### Lightweight Architecture
+## Next: complete DebugProbe Server
 
-* Minimal dependencies
-* Simple setup
-* In-memory bounded storage
-* Easy ASP.NET Core integration
+### 1. Make telemetry storage and queries operationally usable
 
----
+- Add server-side filtering and pagination, replacing the fixed latest-500 read limit.
+- Define indexes around measured application/environment, timestamp, status and duration queries.
+- Add ingestion payload limits and request validation appropriate for captured bodies and outgoing-call lists.
+- Add configurable retention and automatic cleanup of requests, exceptions and heartbeats.
+- Make heartbeat freshness and instance state clear in the UI.
+- Measure ingestion throughput, concurrent reads, queue drops and database growth under representative workloads before choosing capacity limits.
 
-# Product Direction
+Start with one PostgreSQL database and a simple deployment. Add storage components or split databases when measurements or a concrete customer requirement justify them.
 
-The roadmap focuses on 5 major areas:
+### 2. Finish customer installation and operation
 
-1. Security & Safety
-2. Outgoing HTTP Visibility
-3. Performance & Storage
-4. Observability & Metrics
-5. Developer Experience & UI
+- Provide production Docker and IIS installation/upgrade instructions, including HTTPS, reverse-proxy settings, persistent session keys and filesystem permissions.
+- Define migration execution, upgrade compatibility and recovery procedures.
+- Document and exercise backup/restore for telemetry, accounts and session-protection keys.
+- Complete account administration needed for customer operation, including password recovery/reset, account disabling and clear access-change behavior.
+- Review access to captured bodies and administrative audit history, in addition to existing application/environment grants.
+- Exercise authentication, authorization and sensitive-data handling with production deployment settings.
 
----
+### Server readiness criteria
 
-# Roadmap
+The first production Server release should be installable and upgradable by a customer, have bounded ingestion/storage behavior, enforce its access rules, and have tested backup/restore and documented failure behavior. The package-to-server path must work in the supported deployment modes.
 
-# Phase 0 — Foundation & Safety
+Completion of these criteria comes before starting the Cloud product. Development Docker setup alone does not establish production readiness.
 
-> Goal: Make DebugProbe safer and more production-friendly.
+### Later Server options, driven by customer needs
 
-## Planned Features
+- Optional Microsoft SQL Server support: provider-specific mappings, migrations, telemetry queries and integration tests, selected at installation. Moving existing data between database engines needs a separate migration procedure.
+- Corporate sign-in through the customer's identity provider, while retaining application/environment permissions in Server.
+- Improved search, comparison, dependency summaries and team workflows based on actual usage.
 
-### Response Header Capture
+SQL Server is a planned extension, not a prerequisite for the first PostgreSQL-based Server release. Other optional features can be prioritized without delaying the Server readiness work above.
 
-Capture and display response headers alongside requests.
+## After Server: DebugProbe Cloud
 
-#### Benefits
+Cloud builds on the Server functionality and package ingestion contract. It adds the requirements of operating a hosted SaaS service:
 
-* Easier CORS debugging
-* Cache inspection
-* Authentication troubleshooting
-* Better environment comparison
+- Organizations/workspaces and tenant isolation across telemetry, queries, users and ingestion keys.
+- Customer onboarding, organization membership, invitations and account lifecycle management.
+- Subscription plans, usage measurement, quotas, ingestion rate limits and billing.
+- Retention/storage limits per plan, customer data export/deletion and defined data-handling policies.
+- Managed provisioning, upgrades, backups, monitoring and recovery, followed by scaling based on measured demand.
 
----
+The application package should continue to send with scoped ingestion credentials; cloud account and billing operations belong to the hosted service. Hosting vendors, billing providers, subscription prices and infrastructure topology remain decisions for the Cloud phase.
 
-### Authentication for `/debug`
+## Package improvements to evaluate alongside product work
 
-Protect debug endpoints with configurable authentication.
+These are candidates rather than committed release contents:
 
-#### Proposed Options
+- Clearer visibility into export health and dropped-event counts.
+- Sampling or selective capture for higher-volume applications.
+- Batching or bounded retries if a measured delivery requirement justifies them; define duplicate handling and server compatibility first.
+- Activity/OpenTelemetry correlation for cross-service debugging, with a distinction between local request IDs and distributed trace/span IDs.
+- Better compare controls for dynamic values, and portable trace export/import.
+- Request replay only with deliberate control over authentication, targets and operations that change data.
 
-* ASP.NET Core authorization policy
-* Token-based access
-* Environment-based enable/disable
-* IP allowlist support
+Package changes must preserve the application response, existing redaction/capture controls and bounded resource usage. Add public extension points when a real integration needs them.
 
-#### Benefits
+## Engineering principles
 
-* Safer staging deployments
-* Prevent accidental exposure
-* Production-readiness
-
----
-
-### Safer Defaults
-
-Improve out-of-box configuration.
-
-#### Planned Defaults
-
-* Ignore `/swagger`
-* Ignore `/health`
-* Ignore static assets
-* Disable body capture in Production
-
----
-
-### Configurable Capture Limits
-
-Prevent excessive memory usage.
-
-#### New Options
-
-* `MaxBodyBytes`, `MaxStoredEntries`, `CaptureBodies`, `CaptureResponseHeaders`
-
-#### Benefits
-
-* Better stability
-* Lower memory pressure
-* Safer large payload handling
-
----
-
-### Sensitive Data Redaction
-
-Built-in redaction system.
-
-#### Redaction Targets
-
-* Authorization headers
-* Cookies
-* API keys
-* Password fields
-* Sensitive JSON fields
-
-#### Planned Configuration
-
-```csharp
-options.RedactHeaders = ["Authorization", "Cookie"];
-options.RedactJsonFields = ["password", "token"];
-```
-
----
-
-# Phase 1 — Outgoing HTTP Capture
-
-> Goal: Add visibility into external API calls and downstream services.
-
-## Planned Features
-
-### HttpClient Instrumentation
-
-Add automatic outgoing HTTP capture using `DelegatingHandler`.
-
-#### Captured Data
-
-* URL
-* Method
-* Status code
-* Duration
-* Request headers
-* Response headers
-* Request body
-* Response body
-* Exceptions
-
----
-
-### Correlation Tracking
-
-Link incoming requests with outgoing calls.
-
-#### Features
-
-* Trace ID propagation
-* Request chain visibility
-* End-to-end debugging
-
-#### Example
-
-```text
-Incoming Request
- ├── External API Call #1
- ├── External API Call #2
- └── Database/API latency timeline
-```
-
----
-
-### Outgoing Requests Dashboard
-
-New UI section for external calls.
-
-#### Planned UI Features
-
-* Recent outgoing requests
-* Filter by host
-* Error highlighting
-* Latency sorting
-* Group by service
-
----
-
-### External Service Statistics
-
-Aggregate metrics by destination host.
-
-#### Example Metrics
-
-* Average latency
-* Failure rate
-* Request count
-* Slowest services
-
----
-
-# Phase 2 — Storage & Persistence
-
-> Goal: Move beyond temporary in-memory debugging.
-
-## Planned Features
-
-### Pluggable Storage System
-
-Introduce sink/provider architecture.
-
-#### Proposed Interface
-
-```csharp
-IDebugProbeSink
-```
-
----
-
-### Storage Providers
-
-#### InMemorySink
-
-Current implementation.
-
-#### FileSink
-
-* JSON-based storage
-* Rolling files
-* Lightweight persistence
-
-#### SQLite Sink
-
-* Searchable local history
-* Structured querying
-* Better retention support
-
-#### Remote Collector Sink
-
-* Centralized debugging
-* Multi-instance aggregation
-* Shared environments
-
----
-
-### Export & Import
-
-Allow traces to be shared and archived.
-
-#### Supported Formats
-
-* JSON
-* CSV
-* ZIP export bundles
-
----
-
-### Retention Policies
-
-Automatic cleanup rules.
-
-#### Examples
-
-* Maximum age
-* Maximum size
-* Maximum entries
-
----
-
-# Phase 3 — Observability & Metrics
-
-> Goal: Add lightweight operational insights.
-
-## Planned Features
-
-### Request Metrics
-
-Aggregate request statistics.
-
-#### Metrics
-
-* Request count
-* Error rate
-* Median latency
-* P95 latency
-* Slowest endpoints
-
----
-
-### External Dependency Metrics
-
-Analyze downstream services.
-
-#### Metrics
-
-* Top external hosts
-* Failed services
-* Timeout rates
-* Latency distribution
-
----
-
-### Interactive Dashboard
-
-Embedded lightweight charts.
-
-#### Planned Visualizations
-
-* Request timeline
-* Latency graphs
-* Error trends
-* Throughput graphs
-
----
-
-### Filtering & Search
-
-Improve debugging workflow.
-
-#### Filters
-
-* Path
-* Method
-* Status code
-* Host
-* Trace ID
-* Duration range
-
----
-
-# Phase 4 — Developer Experience
-
-> Goal: Make DebugProbe easier and faster to use.
-
-## Planned Features
-
-### Improved Compare View
-
-Smarter request diffing.
-
-#### Enhancements
-
-* JSON field diff
-* Highlighted changes
-* Header comparison
-* Timing comparison
-
----
-
-### UI Modernization
-
-Improve readability and usability.
-
-#### Planned Improvements
-
-* Better layout
-* Responsive UI
-* Dark mode
-* Faster rendering
-* Cleaner navigation
-
----
-
-### Embedded Search
-
-Global search across captured entries.
-
-#### Search Targets
-
-* Headers
-* Bodies
-* URLs
-* Trace IDs
-
----
-
-### Request Replay
-
-Replay captured requests.
-
-#### Use Cases
-
-* Reproduce bugs
-* Regression testing
-* API debugging
-
----
-
-### Plugin / Extension Hooks
-
-Allow custom integrations.
-
-#### Potential Extension Points
-
-* Custom sinks
-* Custom redactors
-* Custom exporters
-* Custom UI tabs
-
----
-
-# Phase 5 — Advanced & Optional Features
-
-> Goal: Expand into distributed debugging scenarios.
-
-## Potential Features
-
-### Distributed Trace Aggregation
-
-Collect traces across multiple services.
-
----
-
-### OpenTelemetry Integration
-
-Optional interoperability with OTEL.
-
-#### Possible Features
-
-* Trace export
-* Activity integration
-* Span correlation
-
----
-
-### Remote Debug Collector
-
-Centralized debugging service.
-
-#### Use Cases
-
-* Multi-instance deployments
-* Kubernetes environments
-* Shared QA systems
-
----
-
-### Team Collaboration Features
-
-Potential long-term additions.
-
-#### Examples
-
-* Shared trace links
-* Saved sessions
-* Trace annotations
-
----
-
-# Technical Principles
-
-### Keep It Lightweight
-
-DebugProbe should remain simple to install and remove.
-
-### Avoid Heavy Dependencies
-
-Prefer built-in ASP.NET Core features where possible.
-
-### Production Safety First
-
-Security and redaction should be first-class concerns.
-
-### Extensible by Design
-
-New features should support modular extension points.
-
----
-
-# Suggested Priority Order
-
-### High Priority (...---...)
-
-* Authentication
-* Redaction
-* Body size limits
-* Response headers
-* Outgoing HTTP capture
-
-### Medium Priority (-_^)
-
-* Persistence
-* Metrics dashboard
-* Filtering/search
-* Export/import
-
-### Long-Term / Optional (•̀ᴗ•́)و
-
-* Distributed tracing
-* OpenTelemetry
-* Remote collectors
-* Replay tooling
-
----
-
-# Milestone Recommendation
-
-## Recommended Next Release Focus
-
-### v1.Next
-
-* Response header capture
-* RequireAuth option
-* Redaction support
-* MaxBodyBytes
-* Outgoing HTTP capture
-* Outgoing requests UI tab
-
-### v2
-
-* Persistence providers
-* Metrics dashboard
-* Filtering/search
-* Export/import
-
-### v3
-
-* Distributed tracing
-* Remote collector
-* OpenTelemetry integration
-
----
-
-# Long-Term Goal
-
-DebugProbe should become:
-
-> The easiest way to inspect and compare HTTP behavior inside ASP.NET Core applications.
-
-While still remaining:
-
-* lightweight
-* embeddable
-* developer-friendly
-* infrastructure-optional
-* safe for internal environments
+- Keep installation, configuration and the code structure simple.
+- Prefer built-in .NET/ASP.NET Core features and a small dependency footprint.
+- Keep local inspection usable without a Server or Cloud account.
+- Apply capture and redaction controls before sending data; enforce authorization and storage limits at the destination.
+- Version the ingestion contract and verify compatibility between supported package/server versions.
+- Separate implemented behavior from proposals, and update this roadmap when work ships or priorities change.

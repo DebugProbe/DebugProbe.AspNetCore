@@ -2,7 +2,17 @@
 
 DebugProbe.AspNetCore is a lightweight ASP.NET Core debugging tool for inspecting HTTP traffic directly inside your application.
 
-It captures request and response data, exposes a local dashboard, and helps compare traces across environments so you can spot differences between local, staging, and other API runs.
+It captures incoming requests and outgoing HTTP calls, provides an embedded dashboard, and compares captured requests across environments. Starting with 2.1.0, it can also send telemetry to DebugProbe Server.
+
+## DebugProbe products
+
+| Product | Purpose | Status |
+| --- | --- | --- |
+| **DebugProbe.AspNetCore** | Capture and inspect HTTP traffic inside an ASP.NET Core application; optionally export telemetry | The package in this repository; server export implemented for 2.1.0 |
+| **DebugProbe Server** | Centralized telemetry and team access, hosted by the customer on IIS or Docker | In development; PostgreSQL, accounts, access grants, ingestion and local Docker setup are implemented |
+| **DebugProbe Cloud** | A hosted SaaS service operated by DebugProbe | Planned after DebugProbe Server is ready |
+
+The package works independently with its local dashboard. Server is an optional destination; it stores telemetry and manages access separately from the instrumented application. See the [product roadmap](https://github.com/DebugProbe/DebugProbe.AspNetCore/blob/main/Roadmap.md) for the development order and remaining work.
 
 ## Links
 
@@ -13,12 +23,12 @@ It captures request and response data, exposes a local dashboard, and helps comp
 
 ## Version Compatibility
 
-| DebugProbe.AspNetCore | Target framework | Compatible application versions |
+| DebugProbe.AspNetCore | Target framework | Application requirement |
 | --- | --- | --- |
-| 2.x (starting with 2.0.0) | `net10.0` | .NET 10 and later compatible .NET versions |
-| 1.x targeting net8.0 (for example, 1.6.10) | `net8.0` | .NET 8, .NET 9, and later compatible .NET versions |
+| 2.x, including 2.1.0 | `net10.0` | .NET 10 / ASP.NET Core 10 |
+| 1.x releases targeting net8.0 (for example, 1.6.10) | `net8.0` | Use a compatible 1.x release for applications staying on .NET 8 or 9 |
 
-Version 2.0.0 requires .NET 10 and ASP.NET Core 10. Building this repository requires the .NET 10 SDK.
+Versions 2.0.0 and 2.1.0 require .NET 10 and ASP.NET Core 10. Building this repository requires the .NET 10 SDK.
 Applications staying on .NET 8 or .NET 9 should use a compatible 1.x release, such as 1.6.10:
 
 ```bash
@@ -54,7 +64,7 @@ Start your application and open:
 http://localhost:{port}/debug
 ```
 
-In Production, DebugProbe captures traces but does not register UI endpoints unless explicitly enabled.
+In Production, DebugProbe captures traces but does not register dashboard, JSON, environment or compare endpoints unless explicitly enabled. Local capture data is kept in memory and is lost when the application stops.
 DebugProbe does not require authentication by default.
 
 ## Send telemetry to DebugProbe Server (2.1+)
@@ -79,9 +89,10 @@ builder.Services.AddDebugProbe(options =>
 
 Keep `app.UseDebugProbe()` in the pipeline as usual. The server's base URL may include a path prefix. Application ID and environment are case-sensitive and must match the key. A null environment uses `IHostEnvironment.EnvironmentName`; an empty string means the unnamed environment. Use HTTPS when the server is not local. TLS certificates are validated normally; redirects are not followed.
 
-To bind from `appsettings.Development.json` instead:
+To bind from `appsettings.Development.json` instead, use this as an alternative to the configuration callback:
 
 ```csharp
+using DebugProbe.AspNetCore.Extensions;
 using DebugProbe.AspNetCore.Options;
 
 builder.Services.AddDebugProbe();
@@ -107,9 +118,23 @@ Export uses already captured/redacted bodies, headers and URLs, respecting the e
 
 Delivery is **best effort**: requests never wait for network delivery. The queue holds up to 256 events, each HTTP send times out after five seconds, and failures or full queues drop events. There are no retries, disk spool or extra infrastructure. Warnings are limited to one per 30 seconds and do not include keys, payloads or response bodies. Graceful shutdown allows up to five seconds for queued events before cancellation; abrupt termination can lose queued events.
 
-Optional tuning: `Server.QueueCapacity`, `Server.Timeout` and `Server.HeartbeatInterval`. Invalid export configuration fails at startup. `Enabled = false` disables export as well as local capture.
+Export settings:
 
-The included **DebugProbe.SampleApi** development configuration is already connected to the local Docker server at port 18080, using application ID `debugprobe-sample`, environment `Development` and a dedicated development ingestion key. Start the sample and call `/weatherforecast` or `/Demo/GetUser/500`, then refresh DebugProbe Server. Its dev key is intentionally tracked for this workspace's development setup; other server installations must issue their own key.
+| Setting | Default / behavior |
+| --- | --- |
+| `Server` | `null`: no remote export |
+| `Server.Url` | Required server base URL; the package appends `/api/ingestion/` |
+| `Server.ApiKey` | Required ingestion key issued by that server |
+| `Server.ApplicationId` | Required application ID matching the key |
+| `Server.ApplicationName` | Host application's name |
+| `Server.Environment` | Host environment when null; empty string is the unnamed environment |
+| `Server.QueueCapacity` | 256 queued events |
+| `Server.Timeout` | Five seconds per HTTP send |
+| `Server.HeartbeatInterval` | One minute |
+
+Invalid export configuration fails at startup. `Enabled = false` disables export as well as local capture. Server export does not require the local UI to be enabled in Production. JSON configuration uses TimeSpan strings such as `"00:00:05"` for timeout values.
+
+**DebugProbe.SampleApi** is included in the source repository, not in the NuGet package. Its development configuration targets a local Docker server at port 18080, using application ID `debugprobe-sample`, environment `Development` and a development ingestion key. That key is specific to the development server where it was issued; another installation needs its own key. Start the server and sample, call `/weatherforecast` or `/Demo/GetUser/500`, then refresh DebugProbe Server.
 
 ## Optional Configuration
 
@@ -156,10 +181,11 @@ builder.Services.AddDebugProbe(options =>
 app.UseDebugProbe();
 ```
 
-Configure options in `AddDebugProbe`; `UseDebugProbe()` only enables the middleware and endpoints.
+Register configuration through `AddDebugProbe` or the standard options API; `UseDebugProbe()` enables the middleware and endpoints without accepting a configuration callback.
 
 - `Enabled = false` disables capture and all DebugProbe endpoints.
 - `MaxBodySizeKb = 0` disables all body capture. Headers and request metadata are still captured.
+- `MaxRequests` defaults to 20 locally retained requests; `MaxBodySizeKb` defaults to 32 per body.
 - `CaptureRequestBody` and `CaptureResponseBody` independently control incoming and outgoing bodies (both default to `true`).
 - `SlowRequestThreshold = TimeSpan.FromSeconds(1)` controls slow badges; `TimeSpan.Zero` disables them.
 - `ExcludedPaths` replaces the defaults. Use `[..options.ExcludedPaths, "/other"]` to extend them, or `[]` to capture all application paths.
@@ -226,6 +252,9 @@ For endpoint authorization, see **Security Defaults** below.
 - Configurable redaction for sensitive headers, query parameters, and JSON fields
 - Optional ASP.NET Core authorization policy protection for DebugProbe endpoints
 - Optional outgoing `HttpClient` request tracing
+- Optional authenticated export of requests, unhandled exceptions and heartbeats to DebugProbe Server
+
+Outgoing capture applies to clients created through `IHttpClientFactory` while an incoming request is being captured. Calls made by a standalone `new HttpClient()` or outside an active captured request are not automatically included.
 
 ## Trace Compare
 
@@ -240,7 +269,7 @@ Typical workflow:
 
 Compare is useful when checking differences between local and remote environments, repeated runs, or two versions of the same API flow.
 
-Dynamic values such as IDs, timestamps, tokens, and selected headers are normalized so the compare view focuses on meaningful request and response differences.
+Comparison includes JSON-aware request/response body differences, status codes and displayed request/environment metadata. Dynamic IDs, timestamps and tokens are not automatically normalized or ignored. Both applications currently need the same DebugProbe route prefix, and the remote application's JSON/environment endpoints must be reachable. `AllowLocalCompareTargets` permits local/private-network targets by default only in Development; it is separate from the server export URL.
 
 ## Security Defaults
 
@@ -298,6 +327,8 @@ builder.Services.AddDebugProbe(options =>
     options.RedactedJsonFields = ["password", "secret", "refreshToken"];
 });
 ```
+
+Query-parameter and JSON-field redaction lists are empty by default. Redaction matches the configured names; it is not a general scrubber for arbitrary text, exception messages or URL paths. Choose capture and redaction settings before enabling remote export, since exported telemetry uses the captured data.
 
 ## Intended Usage
 

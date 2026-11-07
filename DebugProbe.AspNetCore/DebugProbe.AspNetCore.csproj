@@ -17,12 +17,12 @@
 		<PackageTags>aspnetcore;debugging;http;middleware;diagnostics;tracing;observability;api-debugging;developer-tools;trace-comparison;environment-comparison</PackageTags>
 
 		<PackageReleaseNotes>
-            - Optional background telemetry export to DebugProbe Server with scoped API keys, bounded queue, timeout and heartbeat.
-            - Targets .NET 10; applications on .NET 8 or 9 should stay on compatible 1.x releases.
-            - Breaking API changes: simplified options, configuration only in AddDebugProbe, and concurrent outgoing request storage.
-            - Fixed custom route prefixes, capture failure isolation, and concurrent storage operations.
-            - Removed the global storage instance and unified body capture limits, encoding, truncation, and redaction.
-        </PackageReleaseNotes>
+			- Added optional telemetry export to DebugProbe Server for requests, unhandled exceptions, and heartbeats.
+			- Added scoped API key authentication and configurable application/environment identity.
+			- Sends telemetry through a bounded background queue with timeouts and graceful shutdown.
+			- Preserves existing capture limits, redaction settings, and local dashboard behavior.
+			- Delivery is best effort; failed sends and queue overflow drop events without blocking application requests.
+		</PackageReleaseNotes>
 		
 		<PackageIcon>icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
