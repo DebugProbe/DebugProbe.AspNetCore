@@ -6,6 +6,9 @@ public class DebugProbeOptions
     /// <summary>Enables request capture and DebugProbe endpoints.</summary>
     public bool Enabled { get; set; } = true;
 
+    /// <summary>Optional server export. Null keeps all telemetry local, as before.</summary>
+    public DebugProbeServerOptions? Server { get; set; }
+
     /// <summary>Maximum number of requests kept in memory.</summary>
     public int MaxRequests { get; set; } = 20;
 

@@ -4,6 +4,9 @@ namespace DebugProbe.AspNetCore.Models;
 
 public class DebugEntry
 {
+    // Actual unhandled exception type; details are taken only from the already bounded/redacted response capture.
+    internal string? ExceptionType { get; set; }
+
     public string Id { get; set; } = default!;
 
     public string Path { get; set; } = default!;

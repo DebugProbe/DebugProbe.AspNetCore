@@ -136,6 +136,7 @@ public class DebugProbeMiddleware
                         x => x.Key,
                         x => RedactionUtils.RedactHeader(x.Key, x.Value.ToString(), _options));
 
+                entry.ExceptionType = applicationException?.GetType().FullName;
                 store.Add(entry);
             }
             catch (Exception)

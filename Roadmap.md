@@ -23,6 +23,13 @@ The long-term direction is to keep DebugProbe:
 
 ## Existing Features
 
+### DebugProbe Server Export (2.1)
+
+* Optional authenticated HTTP export of requests, unhandled exceptions and heartbeats
+* Bounded in-memory queue and one background sender; existing redaction and capture settings apply
+* Best-effort delivery with timeout, bounded shutdown drain and throttled warnings
+* Local dashboard remains independent; no retry or disk-spool dependencies
+
 ### HTTP Traffic Inspection
 
 * Incoming request capture

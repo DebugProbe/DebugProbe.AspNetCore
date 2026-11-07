@@ -1,4 +1,5 @@
 using DebugProbe.AspNetCore.Extensions;
+using DebugProbe.AspNetCore.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,7 @@ builder.Services.AddDebugProbe(options =>
     options.MaxRequests = 10;
     options.AllowUiInProduction = true;
 });
+builder.Services.Configure<DebugProbeOptions>(builder.Configuration.GetSection("DebugProbe"));
 
 var app = builder.Build();
 

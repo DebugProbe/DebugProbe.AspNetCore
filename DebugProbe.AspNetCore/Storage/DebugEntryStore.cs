@@ -14,6 +14,8 @@ namespace DebugProbe.AspNetCore.Storage;
 /// </summary>
 public class DebugEntryStore
 {
+    internal event Action<DebugEntry>? EntryAdded;
+
     private static readonly Regex GuidRegex = new(@"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b", RegexOptions.Compiled);
     private static readonly Regex NumberRegex = new(@"\b\d+(\.\d+)?\b", RegexOptions.Compiled);
 
@@ -106,6 +108,7 @@ public class DebugEntryStore
                 }
             }
         }
+        EntryAdded?.Invoke(entry);
     }
 
     public DebugEnvironment GetEnvironment(DebugEntry entry)

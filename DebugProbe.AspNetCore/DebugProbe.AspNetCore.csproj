@@ -8,7 +8,7 @@
 		<NoWarn>1591</NoWarn>
 
 		<PackageId>DebugProbe.AspNetCore</PackageId>
-		<Version>2.0.0</Version>
+		<Version>2.1.0</Version>
 
 		<Authors>Georgi Hristov</Authors>
 
@@ -17,6 +17,7 @@
 		<PackageTags>aspnetcore;debugging;http;middleware;diagnostics;tracing;observability;api-debugging;developer-tools;trace-comparison;environment-comparison</PackageTags>
 
 		<PackageReleaseNotes>
+            - Optional background telemetry export to DebugProbe Server with scoped API keys, bounded queue, timeout and heartbeat.
             - Targets .NET 10; applications on .NET 8 or 9 should stay on compatible 1.x releases.
             - Breaking API changes: simplified options, configuration only in AddDebugProbe, and concurrent outgoing request storage.
             - Fixed custom route prefixes, capture failure isolation, and concurrent storage operations.

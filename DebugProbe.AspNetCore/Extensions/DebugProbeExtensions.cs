@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using DebugProbe.AspNetCore.Handlers;
 using DebugProbe.AspNetCore.Internal.Compare;
+using DebugProbe.AspNetCore.Internal.Export;
 using DebugProbe.AspNetCore.Internal.Rendering;
 using DebugProbe.AspNetCore.Internal.Resources;
 using DebugProbe.AspNetCore.Internal.Utils;
@@ -8,7 +9,6 @@ using DebugProbe.AspNetCore.Middleware;
 using DebugProbe.AspNetCore.Models;
 using DebugProbe.AspNetCore.Options;
 using DebugProbe.AspNetCore.Storage;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,23 +36,36 @@ public static class DebugProbeExtensions
         services.AddOptions<DebugProbeOptions>()
             .Configure(options => configure?.Invoke(options))
             .ValidateOnStart();
+
         services.AddSingleton<IValidateOptions<DebugProbeOptions>, DebugProbeOptionsValidator>();
         services.PostConfigure<DebugProbeOptions>(options =>
         {
             if (!string.IsNullOrWhiteSpace(options.RoutePrefix))
                 options.RoutePrefix = "/" + options.RoutePrefix.Trim('/');
         });
+
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<DebugProbeOptions>>().Value);
         services.AddSingleton<DebugEntryStore>();
         services.AddHttpContextAccessor();
         services.AddHttpClient();
+        services.AddHttpClient(ServerExporter.ClientName, (sp, client) =>
+        {
+            var server = sp.GetRequiredService<DebugProbeOptions>().Server;
+            if (server is null) return;
+            client.BaseAddress = new Uri(server.Url.TrimEnd('/') + "/api/ingestion/");
+            client.Timeout = server.Timeout;
+            client.DefaultRequestHeaders.Add("X-DebugProbe-Key", server.ApiKey);
+        }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
+        
+        services.AddSingleton<ServerExporter>();
+        services.AddHostedService(sp => sp.GetRequiredService<ServerExporter>());
         services.AddTransient<DebugProbeHttpClientHandler>();
         services.ConfigureAll<HttpClientFactoryOptions>(httpClientOptions =>
         {
             httpClientOptions.HttpMessageHandlerBuilderActions.Add(builder =>
             {
                 var options = builder.Services.GetRequiredService<DebugProbeOptions>();
-                if (options.Enabled && options.CaptureOutgoingRequests)
+                if (options.Enabled && options.CaptureOutgoingRequests && builder.Name != ServerExporter.ClientName)
                     builder.AdditionalHandlers.Add(builder.Services.GetRequiredService<DebugProbeHttpClientHandler>());
             });
         });
@@ -247,8 +260,6 @@ public static class DebugProbeExtensions
 
                 }).ExcludeFromDescription(), options);
             }
-
-
         }
 
         return app;

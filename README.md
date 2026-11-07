@@ -9,8 +9,6 @@ It captures request and response data, exposes a local dashboard, and helps comp
 - Website: [debugprobe.dev](https://debugprobe.dev)
 - Documentation: [debugprobe.dev/docs](https://debugprobe.dev/docs)
 - Roadmap: [Roadmap.md](https://github.com/DebugProbe/DebugProbe.AspNetCore/blob/main/Roadmap.md)
-- Live demo: [demo.debugprobe.dev/debug](https://demo.debugprobe.dev/debug)
-- Demo API: [demo.debugprobe.dev/swagger](https://demo.debugprobe.dev/swagger)
 - NuGet: [DebugProbe.AspNetCore](https://www.nuget.org/packages/DebugProbe.AspNetCore)
 
 ## Version Compatibility
@@ -58,6 +56,60 @@ http://localhost:{port}/debug
 
 In Production, DebugProbe captures traces but does not register UI endpoints unless explicitly enabled.
 DebugProbe does not require authentication by default.
+
+## Send telemetry to DebugProbe Server (2.1+)
+
+Export is optional. Without `Server` configuration, DebugProbe keeps working locally as before.
+
+In the server's **Settings → API keys**, create an ingestion key for your application's ID and environment. Configure the same values in the application:
+
+```csharp
+builder.Services.AddDebugProbe(options =>
+{
+    options.Server = new()
+    {
+        Url = "http://localhost:18080",
+        ApiKey = "<ingestion-key-from-server>",
+        ApplicationId = "my-api",
+        ApplicationName = "My API", // optional; defaults to the host application's name
+        Environment = "Development"
+    };
+});
+```
+
+Keep `app.UseDebugProbe()` in the pipeline as usual. The server's base URL may include a path prefix. Application ID and environment are case-sensitive and must match the key. A null environment uses `IHostEnvironment.EnvironmentName`; an empty string means the unnamed environment. Use HTTPS when the server is not local. TLS certificates are validated normally; redirects are not followed.
+
+To bind from `appsettings.Development.json` instead:
+
+```csharp
+using DebugProbe.AspNetCore.Options;
+
+builder.Services.AddDebugProbe();
+builder.Services.Configure<DebugProbeOptions>(builder.Configuration.GetSection("DebugProbe"));
+```
+
+```json
+{
+  "DebugProbe": {
+    "Server": {
+      "Url": "http://localhost:18080",
+      "ApiKey": "<ingestion-key-from-server>",
+      "ApplicationId": "my-api",
+      "Environment": "Development"
+    }
+  }
+}
+```
+
+One background worker posts requests (including captured outgoing calls), unhandled exceptions and application heartbeats to the server's schema-version-1 ingestion endpoints. It uses `X-DebugProbe-Key`; browser login credentials are not used. Requests and exception events share the captured request ID. Heartbeats are sent at startup and then every minute, with a stable instance ID for that application process. Exception events cover exceptions observed by the capture middleware; exceptions handled entirely inside application code remain ordinary captured requests.
+
+Export uses already captured/redacted bodies, headers and URLs, respecting the existing capture switches and body limits. The internal export client is excluded from outgoing-call capture, so it cannot recursively export its own traffic. Local dashboard storage and export queues are independent; `MaxRequests` does not limit the number of events sent over time.
+
+Delivery is **best effort**: requests never wait for network delivery. The queue holds up to 256 events, each HTTP send times out after five seconds, and failures or full queues drop events. There are no retries, disk spool or extra infrastructure. Warnings are limited to one per 30 seconds and do not include keys, payloads or response bodies. Graceful shutdown allows up to five seconds for queued events before cancellation; abrupt termination can lose queued events.
+
+Optional tuning: `Server.QueueCapacity`, `Server.Timeout` and `Server.HeartbeatInterval`. Invalid export configuration fails at startup. `Enabled = false` disables export as well as local capture.
+
+The included **DebugProbe.SampleApi** development configuration is already connected to the local Docker server at port 18080, using application ID `debugprobe-sample`, environment `Development` and a dedicated development ingestion key. Start the sample and call `/weatherforecast` or `/Demo/GetUser/500`, then refresh DebugProbe Server. Its dev key is intentionally tracked for this workspace's development setup; other server installations must issue their own key.
 
 ## Optional Configuration
 

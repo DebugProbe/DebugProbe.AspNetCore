@@ -15,6 +15,7 @@ namespace DebugProbe.AspNetCore.Tests.Infrastructure;
 internal sealed class DebugProbeTestApp : IAsyncDisposable
 {
     private readonly IHost _host;
+    private bool _disposed;
 
     private DebugProbeTestApp(IHost host)
     {
@@ -60,6 +61,8 @@ internal sealed class DebugProbeTestApp : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (_disposed) return;
+        _disposed = true;
         Client.Dispose();
         await _host.StopAsync();
         _host.Dispose();
